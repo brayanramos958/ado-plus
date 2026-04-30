@@ -8,9 +8,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { Loader2, Plus, Target, Box, X, Tag, Clock, Layout, MessageSquare, Calendar, ChevronDown, Search, User } from 'lucide-react'
+import { Loader2, Plus, Target, Box, X, Tag, Clock, Layout, MessageSquare, Calendar, ChevronDown, Search, User, AlertCircle } from 'lucide-react'
 import { useEpics, useFeaturesByEpic, useMembers, useCreateWorkItem, useTags, useIterations } from '../hooks/useWorkItems'
-import { TASK_STATE_COLORS, type WorkItemState } from '../types'
+import { TASK_STATE_COLORS, PRIORITY_COLORS, PRIORITY_LABELS, type WorkItemState } from '../types'
 
 // ─── SearchableDropdown ──────────────────────────────────────────────────────
 
@@ -184,6 +184,7 @@ export function CreateTaskModal({ isOpen, onClose, defaultSprintPath, defaultAss
   const [assignedTo, setAssignedTo] = useState<string | null>(null)
   const [sprintPath, setSprintPath] = useState(defaultSprintPath || '')
   const [effortPoints, setEffortPoints] = useState<string>('')
+  const [priority, setPriority] = useState<number>(2)
   const [tags, setTags] = useState<string[]>([])
   const [tagDropdownOpen, setTagDropdownOpen] = useState(false)
   const [tagSearch, setTagSearch] = useState('')
@@ -222,6 +223,7 @@ export function CreateTaskModal({ isOpen, onClose, defaultSprintPath, defaultAss
       setFeatureId(null)
       setAssignedTo(defaultAssignedTo || null)
       setEffortPoints('')
+      setPriority(2)
       setTags([])
       setTagDropdownOpen(false)
       setTagSearch('')
@@ -257,6 +259,9 @@ export function CreateTaskModal({ isOpen, onClose, defaultSprintPath, defaultAss
       parentId: featureId ?? epicId ?? undefined,
       tags: tags.length > 0 ? tags.join('; ') : undefined,
       effortPoints: effortPoints ? Number(effortPoints) : undefined,
+      priority,
+      fechaInicio: fechaInicio || undefined,
+      fechaFin: fechaFin || undefined,
     })
     onClose()
   }
@@ -493,11 +498,33 @@ export function CreateTaskModal({ isOpen, onClose, defaultSprintPath, defaultAss
                   </div>
                 </div>
 
-                {/* 4. Esfuerzo + Sprint */}
+                {/* 4. Prioridad */}
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground/50 flex items-center gap-1.5">
+                    <AlertCircle className="w-3 h-3" /> Prioridad
+                  </label>
+                  <div className="grid grid-cols-4 gap-1.5">
+                    {([1, 2, 3, 4] as const).map((p) => (
+                      <button
+                        key={p}
+                        type="button"
+                        onClick={() => setPriority(p)}
+                        className={`h-10 rounded-xl text-[10px] font-black transition-all border-2 flex flex-col items-center justify-center gap-0.5
+                          ${priority === p ? 'text-white border-transparent shadow-sm' : 'bg-background text-muted-foreground border-muted-foreground/10 hover:bg-muted/40'}`}
+                        style={priority === p ? { backgroundColor: PRIORITY_COLORS[p] } : {}}
+                      >
+                        <span className="font-black">P{p}</span>
+                        <span className="text-[8px] opacity-80 leading-none">{PRIORITY_LABELS[p]}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* 5. Esfuerzo + Sprint */}
                 <div className="grid grid-cols-2 gap-2">
                   <div className="space-y-1.5">
                     <label className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground/50 flex items-center gap-1">
-                      <Clock className="w-3 h-3" /> Horas Estimadas
+                      <Clock className="w-3 h-3" /> Esfuerzo (h)
                     </label>
                     <div className="flex items-center bg-background rounded-xl px-3 py-2 border border-muted-foreground/10 gap-2">
                       <Clock className="w-3.5 h-3.5 text-muted-foreground/40 flex-shrink-0" />
@@ -507,7 +534,7 @@ export function CreateTaskModal({ isOpen, onClose, defaultSprintPath, defaultAss
                         step="0.5"
                         value={effortPoints}
                         onChange={(e) => setEffortPoints(e.target.value)}
-                        placeholder="pts"
+                        placeholder="0"
                         className="w-full bg-transparent text-xs font-bold outline-none placeholder:text-muted-foreground/30"
                       />
                     </div>

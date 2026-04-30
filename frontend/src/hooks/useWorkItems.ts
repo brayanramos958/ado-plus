@@ -111,20 +111,12 @@ export function useSprintWorkItems(sprintPath: string) {
         fechaInicio: item.fields['Custom.FechaInicio'],
         fechaFin: item.fields['Custom.FechaFin'],
         tipoHistoriaTecnica: item.fields['Custom.TipoHistoriaTecnica'],
-        // Effort: primer campo no-nulo, guardamos cuál es para escritura posterior
-        ...(() => {
-          const sp = item.fields['Microsoft.VSTS.Scheduling.StoryPoints']
-          const ef = item.fields['Microsoft.VSTS.Scheduling.Effort']
-          const oe = item.fields['Microsoft.VSTS.Scheduling.OriginalEstimate']
-          const effortPoints = sp ?? ef ?? oe ?? undefined
-          const effortField =
-            sp != null ? 'Microsoft.VSTS.Scheduling.StoryPoints' as const :
-            ef != null ? 'Microsoft.VSTS.Scheduling.Effort' as const :
-            oe != null ? 'Microsoft.VSTS.Scheduling.OriginalEstimate' as const :
-            undefined
-          return { effortPoints, effortField }
-        })(),
-        completedWork: item.fields['Microsoft.VSTS.Scheduling.CompletedWork'] ?? undefined,
+        effortPoints: item.fields['Microsoft.VSTS.Scheduling.Effort'] ?? undefined,
+        effortField: item.fields['Microsoft.VSTS.Scheduling.Effort'] != null
+          ? 'Microsoft.VSTS.Scheduling.Effort' as const
+          : undefined,
+        completedWork: item.fields['Microsoft.VSTS.Scheduling.RemainingWork'] ?? undefined,
+        priority: item.fields['Microsoft.VSTS.Common.Priority'] ?? undefined,
       }})
 
       return workItems
@@ -204,8 +196,25 @@ export function useUpdateWorkItem() {
   return useMutation({
     mutationFn: ({ id, patches }: { id: number; patches: api.PatchOperation[] }) =>
       api.updateWorkItem(id, patches),
-    onSuccess: () => {
-      // Invalidate sprint work items
+    onMutate: async ({ id, patches }) => {
+      await queryClient.cancelQueries({ queryKey: ['workitems'] })
+      const statePatch = patches.find((p) => p.path === '/fields/System.State')
+      const newState = statePatch?.value as WorkItemUI['state'] | undefined
+      const prevEntries = queryClient.getQueriesData<WorkItemUI[]>({ queryKey: ['workitems'] })
+      if (newState) {
+        queryClient.setQueriesData<WorkItemUI[]>(
+          { queryKey: ['workitems'] },
+          (old) => old?.map((item) => (item.id === id ? { ...item, state: newState } : item))
+        )
+      }
+      return { prevEntries }
+    },
+    onError: (_err, _vars, context) => {
+      for (const [key, data] of context?.prevEntries ?? []) {
+        queryClient.setQueryData(key, data)
+      }
+    },
+    onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ['workitems'] })
     },
   })

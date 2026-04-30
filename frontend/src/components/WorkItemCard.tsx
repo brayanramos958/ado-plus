@@ -1,65 +1,116 @@
+import { useState } from 'react'
 import { Avatar } from './Avatar'
 import { TypeBadge, StateBadge } from './Badge'
+import { TimeConfirmDialog } from './TimeConfirmDialog'
 import { useUpdateWorkItem } from '../hooks/useWorkItems'
 import { useBoardStore } from '../store/boardStore'
-import { TASK_STATES, BUG_STATES, type WorkItemUI, type WorkItemState } from '../types'
+import { TASK_STATES, BUG_STATES, PRIORITY_COLORS, PRIORITY_LABELS, type WorkItemUI, type WorkItemState } from '../types'
 import { ChevronLeft, ChevronRight, Loader2, Clock, Pencil } from 'lucide-react'
 
 interface WorkItemCardProps {
   workItem: WorkItemUI
   onClick?: () => void
+  draggable?: boolean
 }
 
-export function WorkItemCard({ workItem, onClick }: WorkItemCardProps) {
+export function WorkItemCard({ workItem, onClick, draggable }: WorkItemCardProps) {
   const assigneeName = workItem.assignedToName ?? workItem.assignedTo ?? 'Sin asignar'
   const updateMutation = useUpdateWorkItem()
   const { setEditingWorkItemId } = useBoardStore()
+  const [isDragging, setIsDragging] = useState(false)
+  const [pendingChange, setPendingChange] = useState<{
+    newState: WorkItemState
+    basePatches: Array<{ op: 'add' | 'replace'; path: string; value: string | number }>
+  } | null>(null)
 
   const states = workItem.type === 'Bug' ? BUG_STATES : TASK_STATES
   const currentIndex = states.indexOf(workItem.state as WorkItemState)
   const prevState = currentIndex > 0 ? states[currentIndex - 1] : null
   const nextState = currentIndex < states.length - 1 ? states[currentIndex + 1] : null
 
+  const CONFIRM_STATES: WorkItemState[] = ['Bloqueado', 'Resuelto', 'Cerrado']
+
   const handleStateChange = (e: React.MouseEvent, newState: WorkItemState) => {
     e.stopPropagation()
+    triggerStateChange(newState)
+  }
 
+  const triggerStateChange = (newState: WorkItemState) => {
     const patches: Array<{ op: 'add' | 'replace'; path: string; value: string | number }> = [
       { op: 'add', path: '/fields/System.State', value: newState },
     ]
-
     const now = new Date().toISOString()
 
-    // Al entrar a "En proceso": registrar inicio si aún no tiene
     if (newState === 'En proceso' && !workItem.fechaInicio) {
       patches.push({ op: 'add', path: '/fields/Custom.FechaInicio', value: now })
     }
-
-    // Al llegar a "Resuelto": registrar fin y cargar horas de esfuerzo
     if (newState === 'Resuelto') {
       patches.push({ op: 'add', path: '/fields/Custom.FechaFin', value: now })
+    }
 
-      if (workItem.effortPoints != null) {
-        // Puntos de esfuerzo = horas — se suman a lo que ya tenga CompletedWork
-        const current = workItem.completedWork ?? 0
-        patches.push({
-          op: 'add',
-          path: '/fields/Microsoft.VSTS.Scheduling.CompletedWork',
-          value: current + workItem.effortPoints,
-        })
-      }
+    // Intercept: moving FROM "En proceso" → show time confirmation dialog
+    if (workItem.state === 'En proceso' && CONFIRM_STATES.includes(newState)) {
+      setPendingChange({ newState, basePatches: patches })
+      return
+    }
+
+    // Auto-register CompletedWork when going to Resuelto without dialog
+    if (newState === 'Resuelto' && workItem.effortPoints != null) {
+      patches.push({
+        op: 'add',
+        path: '/fields/Microsoft.VSTS.Scheduling.RemainingWork',
+        value: (workItem.completedWork ?? 0) + workItem.effortPoints,
+      })
     }
 
     updateMutation.mutate({ id: workItem.id, patches })
   }
 
+  const handleConfirmTime = (hours: number) => {
+    if (!pendingChange) return
+    updateMutation.mutate({
+      id: workItem.id,
+      patches: [
+        ...pendingChange.basePatches,
+        { op: 'add', path: '/fields/Microsoft.VSTS.Scheduling.RemainingWork', value: hours },
+      ],
+    })
+    setPendingChange(null)
+  }
+
+  const handleSkipTime = () => {
+    if (!pendingChange) return
+    updateMutation.mutate({ id: workItem.id, patches: pendingChange.basePatches })
+    setPendingChange(null)
+  }
+
   return (
+    <>
     <div
       onClick={onClick}
-      className="bg-card rounded-lg border border-border p-3 cursor-pointer hover:border-primary/50 hover:shadow-sm transition-all"
+      draggable={draggable}
+      onDragStart={draggable ? (e) => {
+        e.dataTransfer.setData('text/plain', String(workItem.id))
+        e.dataTransfer.effectAllowed = 'move'
+        // Defer opacity so browser captures ghost BEFORE re-render
+        setTimeout(() => setIsDragging(true), 0)
+      } : undefined}
+      onDragEnd={draggable ? () => setIsDragging(false) : undefined}
+      className={`bg-card rounded-lg border border-border p-3 transition-all
+        hover:border-primary/50 hover:shadow-sm
+        ${draggable ? 'cursor-grab' : 'cursor-pointer'}
+        ${isDragging ? 'opacity-40 scale-[0.97]' : ''}`}
     >
       {/* Header: ID + acciones + Tipo */}
       <div className="flex items-center justify-between mb-2">
         <div className="flex items-center gap-1.5">
+          {workItem.priority != null && (
+            <span
+              className="w-2 h-2 rounded-full flex-shrink-0"
+              style={{ backgroundColor: PRIORITY_COLORS[workItem.priority] }}
+              title={`Prioridad ${workItem.priority} — ${PRIORITY_LABELS[workItem.priority]}`}
+            />
+          )}
           <span className="text-xs font-mono text-muted-foreground">#{workItem.id}</span>
           <button
             onClick={(e) => { e.stopPropagation(); setEditingWorkItemId(workItem.id) }}
@@ -157,5 +208,17 @@ export function WorkItemCard({ workItem, onClick }: WorkItemCardProps) {
         </div>
       )}
     </div>
+
+    {pendingChange && (
+      <TimeConfirmDialog
+        isOpen={true}
+        taskTitle={workItem.title}
+        estimatedHours={workItem.effortPoints}
+        newState={pendingChange.newState}
+        onConfirm={handleConfirmTime}
+        onSkip={handleSkipTime}
+      />
+    )}
+    </>
   )
 }

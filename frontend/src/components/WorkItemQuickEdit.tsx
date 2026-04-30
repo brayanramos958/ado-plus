@@ -9,9 +9,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { Loader2, Clock, Calendar, CheckSquare } from 'lucide-react'
+import { Loader2, Clock, Calendar, CheckSquare, AlertCircle } from 'lucide-react'
 import { useUpdateWorkItem } from '../hooks/useWorkItems'
-import { TASK_STATES, BUG_STATES, type WorkItemUI } from '../types'
+import { TASK_STATES, BUG_STATES, PRIORITY_COLORS, PRIORITY_LABELS, type WorkItemUI } from '../types'
 
 interface WorkItemQuickEditProps {
   workItem: WorkItemUI | null
@@ -39,6 +39,7 @@ export function WorkItemQuickEdit({ workItem, isOpen, onClose }: WorkItemQuickEd
   const [fechaFin, setFechaFin] = useState('')
   const [effortPoints, setEffortPoints] = useState('')
   const [completedWork, setCompletedWork] = useState('')
+  const [priority, setPriority] = useState<number | null>(null)
 
   const updateMutation = useUpdateWorkItem()
 
@@ -50,6 +51,7 @@ export function WorkItemQuickEdit({ workItem, isOpen, onClose }: WorkItemQuickEd
       setFechaFin(toLocalInput(workItem.fechaFin))
       setEffortPoints(workItem.effortPoints != null ? String(workItem.effortPoints) : '')
       setCompletedWork(workItem.completedWork != null ? String(workItem.completedWork) : '')
+      setPriority(workItem.priority ?? null)
     }
   }, [isOpen, workItem])
 
@@ -57,12 +59,7 @@ export function WorkItemQuickEdit({ workItem, isOpen, onClose }: WorkItemQuickEd
 
   const states = workItem.type === 'Bug' ? BUG_STATES : TASK_STATES
 
-  // Campo ADO al que escribir el esfuerzo — si nunca tuvo valor, usar OriginalEstimate para Tasks
-  const effortFieldToWrite =
-    workItem.effortField ??
-    (workItem.type === 'Task'
-      ? 'Microsoft.VSTS.Scheduling.OriginalEstimate'
-      : 'Microsoft.VSTS.Scheduling.StoryPoints')
+  const effortFieldToWrite = workItem.effortField ?? 'Microsoft.VSTS.Scheduling.Effort'
 
   const handleSave = async () => {
     const patches: Array<{ op: 'add'; path: string; value: string | number }> = []
@@ -90,7 +87,11 @@ export function WorkItemQuickEdit({ workItem, isOpen, onClose }: WorkItemQuickEd
 
     const newCompleted = completedWork !== '' ? Number(completedWork) : null
     if (newCompleted !== null && newCompleted !== (workItem.completedWork ?? null)) {
-      patches.push({ op: 'add', path: '/fields/Microsoft.VSTS.Scheduling.CompletedWork', value: newCompleted })
+      patches.push({ op: 'add', path: '/fields/Microsoft.VSTS.Scheduling.RemainingWork', value: newCompleted })
+    }
+
+    if (priority !== null && priority !== (workItem.priority ?? null)) {
+      patches.push({ op: 'add', path: '/fields/Microsoft.VSTS.Common.Priority', value: priority })
     }
 
     if (patches.length === 0) {
@@ -179,6 +180,28 @@ export function WorkItemQuickEdit({ workItem, isOpen, onClose }: WorkItemQuickEd
                 onChange={(e) => setFechaFin(e.target.value)}
                 className="h-9 text-xs px-2"
               />
+            </div>
+          </div>
+
+          {/* Prioridad */}
+          <div className="space-y-1.5">
+            <label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1">
+              <AlertCircle className="w-3 h-3" /> Prioridad
+            </label>
+            <div className="grid grid-cols-4 gap-1.5">
+              {([1, 2, 3, 4] as const).map((p) => (
+                <button
+                  key={p}
+                  type="button"
+                  onClick={() => setPriority(p)}
+                  className={`h-9 rounded-lg text-[10px] font-black transition-all border-2 flex flex-col items-center justify-center gap-0.5
+                    ${priority === p ? 'text-white border-transparent shadow-sm' : 'bg-background text-muted-foreground border-muted-foreground/10 hover:bg-muted/40'}`}
+                  style={priority === p ? { backgroundColor: PRIORITY_COLORS[p] } : {}}
+                >
+                  <span className="font-black">P{p}</span>
+                  <span className="text-[8px] opacity-80 leading-none">{PRIORITY_LABELS[p]}</span>
+                </button>
+              ))}
             </div>
           </div>
 

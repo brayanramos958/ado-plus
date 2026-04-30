@@ -44,6 +44,21 @@ export const WORKITEM_TYPE_COLORS: Record<WorkItemType, string> = {
   Issue: '#7C3AED', // Púrpura
 }
 
+// Prioridad — 4 niveles (1 = crítica, 4 = baja)
+export const PRIORITY_COLORS: Record<number, string> = {
+  1: '#DC2626',  // Crítica — rojo
+  2: '#F97316',  // Alta — naranja
+  3: '#FBBF24',  // Media — amarillo
+  4: '#6B7280',  // Baja — gris
+}
+
+export const PRIORITY_LABELS: Record<number, string> = {
+  1: 'Crítica',
+  2: 'Alta',
+  3: 'Media',
+  4: 'Baja',
+}
+
 // Mapeo de color por estado (Task)
 export const TASK_STATE_COLORS: Record<WorkItemState, string> = {
   'Por Hacer': '#9CA3AF',  // Gris claro
@@ -114,8 +129,10 @@ export interface WorkItemUI {
   tipoHistoriaTecnica?: string
   // Effort / puntos de esfuerzo (= horas estimadas)
   effortPoints?: number
-  effortField?: 'Microsoft.VSTS.Scheduling.StoryPoints' | 'Microsoft.VSTS.Scheduling.Effort' | 'Microsoft.VSTS.Scheduling.OriginalEstimate'
+  effortField?: 'Microsoft.VSTS.Scheduling.Effort'
   completedWork?: number
+  // Prioridad (1-4)
+  priority?: number
 }
 
 // Parse assignee from tags (multi-asignado)

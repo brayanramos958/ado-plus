@@ -2,12 +2,14 @@
 // Filas horizontales = usuarios
 // Columnas = estados (Por Hacer, Planeado, En proceso, Bloqueado, Resuelto, Cerrado)
 
+import { useState, useEffect } from 'react'
 import { useBoardStore } from '../store/boardStore'
-import { useSprintWorkItems } from '../hooks/useWorkItems'
+import { useSprintWorkItems, useUpdateWorkItem } from '../hooks/useWorkItems'
 import { WorkItemCard } from './WorkItemCard'
+import { TimeConfirmDialog } from './TimeConfirmDialog'
 import { UserCollapseList } from './UserCollapseList'
 import { Spinner } from './Spinner'
-import { TASK_STATES, TASK_STATE_COLORS, type WorkItemUI } from '../types'
+import { TASK_STATES, TASK_STATE_COLORS, type WorkItemUI, type WorkItemState } from '../types'
 
 interface SprintBoardProps {
   sprintPath: string
@@ -222,6 +224,59 @@ interface SprintBoardTableProps {
 }
 
 function SprintBoardTable({ workItems, onWorkItemClick }: SprintBoardTableProps) {
+  const updateMutation = useUpdateWorkItem()
+  const [dragOverKey, setDragOverKey] = useState<string | null>(null)
+  const [timeConfirm, setTimeConfirm] = useState<{
+    workItem: WorkItemUI
+    newState: WorkItemState
+    basePatches: Array<{ op: 'add' | 'replace'; path: string; value: string | number }>
+  } | null>(null)
+
+  const CONFIRM_STATES: WorkItemState[] = ['Bloqueado', 'Resuelto', 'Cerrado']
+
+  // Clear highlight if drag ends outside any valid drop zone
+  useEffect(() => {
+    const handler = () => setDragOverKey(null)
+    document.addEventListener('dragend', handler)
+    return () => document.removeEventListener('dragend', handler)
+  }, [])
+
+  const handleDrop = (e: React.DragEvent, newState: WorkItemState) => {
+    e.preventDefault()
+    setDragOverKey(null)
+    const id = parseInt(e.dataTransfer.getData('text/plain'), 10)
+    if (isNaN(id)) return
+    const workItem = workItems.find((w) => w.id === id)
+    if (!workItem || workItem.state === newState) return
+
+    const patches: Array<{ op: 'add' | 'replace'; path: string; value: string | number }> = [
+      { op: 'add', path: '/fields/System.State', value: newState },
+    ]
+    const now = new Date().toISOString()
+    if (newState === 'En proceso' && !workItem.fechaInicio) {
+      patches.push({ op: 'add', path: '/fields/Custom.FechaInicio', value: now })
+    }
+    if (newState === 'Resuelto') {
+      patches.push({ op: 'add', path: '/fields/Custom.FechaFin', value: now })
+    }
+
+    // Intercept: moving FROM "En proceso" → show time confirmation dialog
+    if (workItem.state === 'En proceso' && CONFIRM_STATES.includes(newState)) {
+      setTimeConfirm({ workItem, newState, basePatches: patches })
+      return
+    }
+
+    // Auto-register CompletedWork for Resuelto when no dialog
+    if (newState === 'Resuelto' && workItem.effortPoints != null) {
+      patches.push({
+        op: 'add',
+        path: '/fields/Microsoft.VSTS.Scheduling.RemainingWork',
+        value: (workItem.completedWork ?? 0) + workItem.effortPoints,
+      })
+    }
+    updateMutation.mutate({ id, patches })
+  }
+
   // Get unique assignees from work items
   const assignees = new Map<string, { email: string; name: string }>()
 
@@ -241,6 +296,7 @@ function SprintBoardTable({ workItems, onWorkItemClick }: SprintBoardTableProps)
   const assigneeList = Array.from(assignees.values())
 
   return (
+    <>
     <div className="min-w-full min-h-full">
       {/* Header de estados - STICKY siempre visible */}
       <div className="flex sticky top-0 z-50 bg-background border-b border-border shadow-sm">
@@ -249,22 +305,25 @@ function SprintBoardTable({ workItems, onWorkItemClick }: SprintBoardTableProps)
           <span className="text-xs font-semibold text-foreground uppercase">Usuario</span>
         </div>
         {/* Columnas de estados */}
-        {TASK_STATES.map((state) => (
-          <div
-            key={state}
-            className="flex-1 min-w-[160px] p-3 text-center"
-          >
-            <span
-              className="text-xs font-semibold uppercase"
-              style={{ color: TASK_STATE_COLORS[state] }}
+        {TASK_STATES.map((state) => {
+          const isActiveCol = dragOverKey?.endsWith(`|${state}`) ?? false
+          return (
+            <div
+              key={state}
+              className={`flex-1 min-w-[160px] p-3 text-center transition-colors ${isActiveCol ? 'bg-primary/5' : ''}`}
             >
-              {state}
-            </span>
-            <span className="ml-1 text-xs text-muted-foreground">
-              ({getCountByState(workItems, state)})
-            </span>
-          </div>
-        ))}
+              <span
+                className="text-xs font-semibold uppercase"
+                style={{ color: TASK_STATE_COLORS[state] }}
+              >
+                {state}
+              </span>
+              <span className="ml-1 text-xs text-muted-foreground">
+                ({getCountByState(workItems, state)})
+              </span>
+            </div>
+          )
+        })}
         <div className="w-20 flex-shrink-0 p-3 text-center">
           <span className="text-xs font-semibold text-foreground uppercase">Total</span>
         </div>
@@ -299,23 +358,39 @@ function SprintBoardTable({ workItems, onWorkItemClick }: SprintBoardTableProps)
               const items = workItems.filter(
                 (w) => (w.assignedTo || null) === (assignee.email || null) && w.state === state
               )
+              const cellKey = `${assignee.email || 'unassigned'}|${state}`
+              const isDragOver = dragOverKey === cellKey
 
               return (
                 <div
                   key={state}
-                  className="flex-1 min-w-[160px] p-2 border-l border-border/50"
+                  onDragOver={(e) => {
+                    e.preventDefault()
+                    e.dataTransfer.dropEffect = 'move'
+                    if (dragOverKey !== cellKey) setDragOverKey(cellKey)
+                  }}
+                  onDragLeave={(e) => {
+                    if (!e.currentTarget.contains(e.relatedTarget as Node)) {
+                      setDragOverKey(null)
+                    }
+                  }}
+                  onDrop={(e) => handleDrop(e, state as WorkItemState)}
+                  className={`flex-1 min-w-[160px] p-2 border-l border-border/50 min-h-[80px] transition-colors
+                    ${isDragOver ? 'bg-primary/5 ring-2 ring-inset ring-primary/20 rounded-sm' : ''}`}
                 >
                   <div className="space-y-2">
                     {items.map((item) => (
                       <WorkItemCard
                         key={item.id}
                         workItem={item}
+                        draggable
                         onClick={() => onWorkItemClick?.(item.id)}
                       />
                     ))}
                     {items.length === 0 && (
-                      <div className="h-16 flex items-center justify-center text-xs text-muted-foreground/30">
-                        —
+                      <div className={`h-16 flex items-center justify-center text-xs transition-colors
+                        ${isDragOver ? 'text-primary/40 font-medium' : 'text-muted-foreground/30'}`}>
+                        {isDragOver ? 'Soltar aquí' : '—'}
                       </div>
                     )}
                   </div>
@@ -353,6 +428,30 @@ function SprintBoardTable({ workItems, onWorkItemClick }: SprintBoardTableProps)
         </div>
       </div>
     </div>
+
+    {timeConfirm && (
+      <TimeConfirmDialog
+        isOpen={true}
+        taskTitle={timeConfirm.workItem.title}
+        estimatedHours={timeConfirm.workItem.effortPoints}
+        newState={timeConfirm.newState}
+        onConfirm={(hours) => {
+          updateMutation.mutate({
+            id: timeConfirm.workItem.id,
+            patches: [
+              ...timeConfirm.basePatches,
+              { op: 'add', path: '/fields/Microsoft.VSTS.Scheduling.RemainingWork', value: hours },
+            ],
+          })
+          setTimeConfirm(null)
+        }}
+        onSkip={() => {
+          updateMutation.mutate({ id: timeConfirm.workItem.id, patches: timeConfirm.basePatches })
+          setTimeConfirm(null)
+        }}
+      />
+    )}
+    </>
   )
 }
 

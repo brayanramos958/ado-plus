@@ -112,6 +112,8 @@ export interface WorkItemField {
   'System.Description'?: string
   'System.History'?: string
   'System.Parent'?: number
+  // Planning
+  'Microsoft.VSTS.Common.Priority'?: number
 }
 
 export interface WorkItem {
@@ -214,21 +216,29 @@ interface SimpleWorkItemBatch {
 
 export async function getEpics(): Promise<{ value: WorkItemRef[] }> {
   const wiql = {
-    query: "SELECT [System.Id] FROM WorkItems WHERE [System.WorkItemType] = 'Epic' ORDER BY [System.Title] ASC",
+    query: "SELECT [System.Id] FROM WorkItems WHERE [System.TeamProject] = 'DESARROLLO TECNOLOGICO' AND [System.WorkItemType] = 'Epic' ORDER BY [System.Title] ASC",
   }
   const idsResult = await request<WIQLResponse>('/wiql', { method: 'POST', body: JSON.stringify(wiql) })
   const ids = idsResult.workItems.map((w) => w.id)
   if (ids.length === 0) return { value: [] }
 
-  const result = await request<SimpleWorkItemBatch>('/workitems/batch', {
-    method: 'POST',
-    body: JSON.stringify({ ids: ids.slice(0, 200), fields: ['System.Id', 'System.Title', 'System.State'] }),
-  })
-  return {
-    value: result.value
-      .map((item) => ({ id: item.fields['System.Id'], title: item.fields['System.Title'], state: item.fields['System.State'] }))
-      .sort((a, b) => a.title.localeCompare(b.title)),
+  const allItems: WorkItemRef[] = []
+  for (let i = 0; i < ids.length; i += 200) {
+    const chunk = ids.slice(i, i + 200)
+    const result = await request<SimpleWorkItemBatch>('/workitems/batch', {
+      method: 'POST',
+      body: JSON.stringify({ ids: chunk, fields: ['System.Id', 'System.Title', 'System.State'] }),
+    })
+
+    allItems.push(
+      ...result.value.map((item) => ({
+        id: item.fields['System.Id'],
+        title: item.fields['System.Title'],
+        state: item.fields['System.State'],
+      }))
+    )
   }
+  return { value: allItems.sort((a, b) => a.title.localeCompare(b.title)) }
 }
 
 export async function getFeaturesByEpic(epicId?: number): Promise<{ value: WorkItemRef[] }> {
@@ -284,10 +294,13 @@ export interface CreateWorkItemData {
   parentId?: number
   tags?: string        // semicolon-separated, e.g. "frontend; backend"
   effortPoints?: number
+  priority?: number    // 1-4
+  fechaInicio?: string
+  fechaFin?: string
 }
 
 export function createWorkItem(data: CreateWorkItemData) {
-  const { type, title, state, assignedTo, iterationPath, parentId, tags, effortPoints } = data
+  const { type, title, state, assignedTo, iterationPath, parentId, tags, effortPoints, priority, fechaInicio, fechaFin } = data
 
   const patches: PatchOperation[] = [
     { op: 'add', path: '/fields/System.Title', value: title },
@@ -310,7 +323,19 @@ export function createWorkItem(data: CreateWorkItemData) {
   }
 
   if (effortPoints !== undefined && effortPoints > 0) {
-    patches.push({ op: 'add', path: '/fields/Microsoft.VSTS.Scheduling.StoryPoints', value: effortPoints })
+    patches.push({ op: 'add', path: '/fields/Microsoft.VSTS.Scheduling.Effort', value: effortPoints })
+  }
+
+  if (priority !== undefined) {
+    patches.push({ op: 'add', path: '/fields/Microsoft.VSTS.Common.Priority', value: priority })
+  }
+
+  if (fechaInicio) {
+    patches.push({ op: 'add', path: '/fields/Custom.FechaInicio', value: fechaInicio })
+  }
+
+  if (fechaFin) {
+    patches.push({ op: 'add', path: '/fields/Custom.FechaFin', value: fechaFin })
   }
 
   return request(`/workitems`, {
