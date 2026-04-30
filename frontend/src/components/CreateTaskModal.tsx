@@ -341,16 +341,14 @@ export function CreateTaskModal({ isOpen, onClose, defaultSprintPath, defaultAss
                 {/* Tipo */}
                 <div className="flex items-center gap-3">
                   <Button type="button" variant="outline" onClick={() => setType('Task')}
-                    className={`flex-1 h-auto py-3 rounded-xl border-2 transition-all font-black text-xs tracking-widest flex items-center justify-center gap-2 ${
-                      type === 'Task' ? 'bg-amber-500/10 border-amber-500 text-amber-600' : 'bg-muted/30 border-transparent text-muted-foreground hover:bg-muted/50'
-                    }`}>
+                    className={`flex-1 h-auto py-3 rounded-xl border-2 transition-all font-black text-xs tracking-widest flex items-center justify-center gap-2 ${type === 'Task' ? 'bg-amber-500/10 border-amber-500 text-amber-600' : 'bg-muted/30 border-transparent text-muted-foreground hover:bg-muted/50'
+                      }`}>
                     <div className={`w-2.5 h-2.5 rounded-full ${type === 'Task' ? 'bg-amber-500 animate-pulse' : 'bg-amber-500/40'}`} />
                     WORK TASK
                   </Button>
                   <Button type="button" variant="outline" onClick={() => setType('Bug')}
-                    className={`flex-1 h-auto py-3 rounded-xl border-2 transition-all font-black text-xs tracking-widest flex items-center justify-center gap-2 ${
-                      type === 'Bug' ? 'bg-red-500/10 border-red-600 text-red-600' : 'bg-muted/30 border-transparent text-muted-foreground hover:bg-muted/50'
-                    }`}>
+                    className={`flex-1 h-auto py-3 rounded-xl border-2 transition-all font-black text-xs tracking-widest flex items-center justify-center gap-2 ${type === 'Bug' ? 'bg-red-500/10 border-red-600 text-red-600' : 'bg-muted/30 border-transparent text-muted-foreground hover:bg-muted/50'
+                      }`}>
                     <div className={`w-2.5 h-2.5 rounded-full ${type === 'Bug' ? 'bg-red-500 animate-pulse' : 'bg-red-500/40'}`} />
                     BUG FIX
                   </Button>
@@ -415,7 +413,7 @@ export function CreateTaskModal({ isOpen, onClose, defaultSprintPath, defaultAss
                       clearLabel="Sin feature"
                       searchPlaceholder="Buscar feature..."
                       icon={<Box className="w-3.5 h-3.5 text-blue-500" />}
-                      disabled={epicId === null && featureOptions.length === 0}
+                      disabled={!epicId}
                     />
                   </div>
                 </div>
@@ -499,7 +497,7 @@ export function CreateTaskModal({ isOpen, onClose, defaultSprintPath, defaultAss
                 <div className="grid grid-cols-2 gap-2">
                   <div className="space-y-1.5">
                     <label className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground/50 flex items-center gap-1">
-                      <Clock className="w-3 h-3" /> Esfuerzo
+                      <Clock className="w-3 h-3" /> Horas Estimadas
                     </label>
                     <div className="flex items-center bg-background rounded-xl px-3 py-2 border border-muted-foreground/10 gap-2">
                       <Clock className="w-3.5 h-3.5 text-muted-foreground/40 flex-shrink-0" />
@@ -565,9 +563,8 @@ export function CreateTaskModal({ isOpen, onClose, defaultSprintPath, defaultAss
                         key={s}
                         type="button"
                         onClick={() => setState(s)}
-                        className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase transition-all border ${
-                          state === s ? 'text-white border-transparent shadow-sm' : 'bg-background text-muted-foreground border-muted-foreground/10 hover:bg-muted/40'
-                        }`}
+                        className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase transition-all border ${state === s ? 'text-white border-transparent shadow-sm' : 'bg-background text-muted-foreground border-muted-foreground/10 hover:bg-muted/40'
+                          }`}
                         style={state === s ? { backgroundColor: TASK_STATE_COLORS[s] } : {}}
                       >
                         {s}
@@ -597,9 +594,8 @@ export function CreateTaskModal({ isOpen, onClose, defaultSprintPath, defaultAss
               </Button>
               <Button type="submit"
                 disabled={createMutation.isPending || !title.trim()}
-                className={`h-11 px-8 rounded-xl font-black text-[11px] uppercase tracking-widest shadow-lg transition-all active:scale-95 flex items-center gap-2 ${
-                  type === 'Task' ? 'bg-amber-600 hover:bg-amber-700 shadow-amber-600/30' : 'bg-red-600 hover:bg-red-700 shadow-red-600/30'
-                }`}>
+                className={`h-11 px-8 rounded-xl font-black text-[11px] uppercase tracking-widest shadow-lg transition-all active:scale-95 flex items-center gap-2 ${type === 'Task' ? 'bg-amber-600 hover:bg-amber-700 shadow-amber-600/30' : 'bg-red-600 hover:bg-red-700 shadow-red-600/30'
+                  }`}>
                 {createMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
                 {createMutation.isPending ? 'Creando...' : `Crear ${type}`}
               </Button>
