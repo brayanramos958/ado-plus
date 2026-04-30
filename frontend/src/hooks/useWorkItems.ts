@@ -28,6 +28,14 @@ export function useMembers() {
   })
 }
 
+export function useTags() {
+  return useQuery({
+    queryKey: ['tags'],
+    queryFn: api.getTags,
+    staleTime: 10 * 60_000,
+  })
+}
+
 export function useEpics() {
   return useQuery({
     queryKey: ['epics'],

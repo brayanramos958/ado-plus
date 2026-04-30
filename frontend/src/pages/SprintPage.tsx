@@ -16,6 +16,7 @@ export function SprintPage() {
     selectedWorkItemId, setSelectedWorkItemId,
     isCreateModalOpen, setCreateModalOpen,
     editingWorkItemId, setEditingWorkItemId,
+    filterAssigned,
   } = useBoardStore()
 
   // Get current sprint
@@ -90,11 +91,11 @@ export function SprintPage() {
         </>
       )}
 
-      {/* Create Task Modal */}
       <CreateTaskModal
         isOpen={isCreateModalOpen}
         onClose={() => setCreateModalOpen(false)}
         defaultSprintPath={sprintPath}
+        defaultAssignedTo={filterAssigned}
       />
 
       {/* Quick Edit Modal */}

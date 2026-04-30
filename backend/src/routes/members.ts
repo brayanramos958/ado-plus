@@ -26,6 +26,11 @@ router.get('/', async (_req, res) => {
 })
 
 
+router.get('/wit/tags', async (_req, res) => {
+  const { status, data } = await adoFetch(`/${config.ADO_PROJECT}/_apis/wit/tags`)
+  res.status(status).json(data)
+})
+
 router.get('/wit/types', async (_req, res) => {
   const { status, data } = await adoFetch(`/${config.ADO_PROJECT}/_apis/wit/workitemtypes`)
   res.status(status).json(data)

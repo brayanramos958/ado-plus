@@ -72,6 +72,16 @@ export function getMembers() {
   return request<{ value: Member[] }>('/members')
 }
 
+export interface ADOTag {
+  id: string
+  name: string
+  active: boolean
+}
+
+export function getTags() {
+  return request<{ value: ADOTag[]; count: number }>('/members/wit/tags')
+}
+
 // ============================================
 // Work Items via WIQL
 // ============================================
@@ -272,12 +282,14 @@ export interface CreateWorkItemData {
   assignedTo?: string
   iterationPath?: string
   parentId?: number
+  tags?: string        // semicolon-separated, e.g. "frontend; backend"
+  effortPoints?: number
 }
 
 export function createWorkItem(data: CreateWorkItemData) {
-  const { type, title, state, assignedTo, iterationPath, parentId } = data
+  const { type, title, state, assignedTo, iterationPath, parentId, tags, effortPoints } = data
 
-  const patches = [
+  const patches: PatchOperation[] = [
     { op: 'add', path: '/fields/System.Title', value: title },
   ]
 
@@ -291,6 +303,14 @@ export function createWorkItem(data: CreateWorkItemData) {
 
   if (iterationPath) {
     patches.push({ op: 'add', path: '/fields/System.IterationPath', value: iterationPath })
+  }
+
+  if (tags) {
+    patches.push({ op: 'add', path: '/fields/System.Tags', value: tags })
+  }
+
+  if (effortPoints !== undefined && effortPoints > 0) {
+    patches.push({ op: 'add', path: '/fields/Microsoft.VSTS.Scheduling.StoryPoints', value: effortPoints })
   }
 
   return request(`/workitems`, {
