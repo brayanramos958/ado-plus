@@ -198,15 +198,43 @@ export function useUpdateWorkItem() {
       api.updateWorkItem(id, patches),
     onMutate: async ({ id, patches }) => {
       await queryClient.cancelQueries({ queryKey: ['workitems'] })
-      const statePatch = patches.find((p) => p.path === '/fields/System.State')
-      const newState = statePatch?.value as WorkItemUI['state'] | undefined
       const prevEntries = queryClient.getQueriesData<WorkItemUI[]>({ queryKey: ['workitems'] })
-      if (newState) {
+
+      // Build a full optimistic update from every patch so the UI reflects
+      // all changes instantly without waiting for the refetch.
+      const update: Partial<WorkItemUI> = {}
+      for (const p of patches) {
+        switch (p.path) {
+          case '/fields/System.Title':
+            update.title = p.value as string; break
+          case '/fields/System.State':
+            update.state = p.value as WorkItemUI['state']; break
+          case '/fields/System.AssignedTo':
+            update.assignedTo = (p.value as string) || null; break
+          case '/fields/System.IterationPath':
+            update.iterationPath = p.value as string; break
+          case '/fields/System.Tags':
+            update.tags = (p.value as string).split(';').map((t) => t.trim()).filter(Boolean); break
+          case '/fields/Microsoft.VSTS.Common.Priority':
+            update.priority = p.value as number; break
+          case '/fields/Microsoft.VSTS.Scheduling.Effort':
+            update.effortPoints = p.value as number; break
+          case '/fields/Microsoft.VSTS.Scheduling.RemainingWork':
+            update.completedWork = p.value as number; break
+          case '/fields/Custom.FechaInicio':
+            update.fechaInicio = p.value as string; break
+          case '/fields/Custom.FechaFin':
+            update.fechaFin = p.value as string; break
+        }
+      }
+
+      if (Object.keys(update).length > 0) {
         queryClient.setQueriesData<WorkItemUI[]>(
           { queryKey: ['workitems'] },
-          (old) => old?.map((item) => (item.id === id ? { ...item, state: newState } : item))
+          (old) => old?.map((item) => (item.id === id ? { ...item, ...update } : item))
         )
       }
+
       return { prevEntries }
     },
     onError: (_err, _vars, context) => {
@@ -214,8 +242,13 @@ export function useUpdateWorkItem() {
         queryClient.setQueryData(key, data)
       }
     },
-    onSettled: () => {
+    onSettled: (_data, _err, { id }) => {
+      // Invalidate the sprint board list
       queryClient.invalidateQueries({ queryKey: ['workitems'] })
+      // Invalidate the detail caches for this specific item so WorkItemModal
+      // and WorkItemQuickEdit show fresh data on next open.
+      queryClient.invalidateQueries({ queryKey: ['workitem-hierarchy', id] })
+      queryClient.invalidateQueries({ queryKey: ['workitem-full', id] })
     },
   })
 }
@@ -237,6 +270,20 @@ export function useDeleteWorkItem() {
   return useMutation({
     mutationFn: (id: number) => api.deleteWorkItem(id),
     onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['workitems'] })
+    },
+  })
+}
+
+export function useCreateWorkItemComment(workItemId: number) {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: (text: string) => api.createWorkItemComment(workItemId, text),
+    onSuccess: () => {
+      // Refresh comment list
+      queryClient.invalidateQueries({ queryKey: ['workitem-comments', workItemId] })
+      // Refresh sprint items so changedDate updates in footer
       queryClient.invalidateQueries({ queryKey: ['workitems'] })
     },
   })

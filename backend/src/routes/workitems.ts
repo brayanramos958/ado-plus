@@ -19,7 +19,14 @@ router.get('/:id', async (req, res) => {
 
 router.post('/', async (req, res) => {
   const { type, patches, parentId } = req.body
-  const allPatches = [...(patches || [])]
+  const patchList: Array<{ op: string; path: string; value?: unknown }> = patches || []
+
+  // ADO only accepts the initial state at creation time; other states must be
+  // set via a subsequent PATCH. Extract the state patch and apply it separately.
+  const statePatch = patchList.find((p) => p.path === '/fields/System.State')
+  const creationPatches = patchList.filter((p) => p.path !== '/fields/System.State')
+
+  const allPatches = [...creationPatches]
 
   if (parentId) {
     allPatches.push({
@@ -37,6 +44,16 @@ router.post('/', async (req, res) => {
     body: allPatches,
     contentType: 'application/json-patch+json',
   })
+
+  const created = data as { id?: number }
+  if (status >= 200 && status < 300 && statePatch && created.id) {
+    await adoFetch(`${PROJECT_PATH}/_apis/wit/workitems/${created.id}`, {
+      method: 'PATCH',
+      body: [statePatch],
+      contentType: 'application/json-patch+json',
+    })
+  }
+
   res.status(status).json(data)
 })
 

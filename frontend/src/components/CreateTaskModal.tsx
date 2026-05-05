@@ -11,6 +11,7 @@ import {
 import { Loader2, Plus, Target, Box, X, Tag, Clock, Layout, MessageSquare, Calendar, ChevronDown, Search, User, AlertCircle } from 'lucide-react'
 import { useEpics, useFeaturesByEpic, useMembers, useCreateWorkItem, useTags, useIterations } from '../hooks/useWorkItems'
 import { TASK_STATE_COLORS, PRIORITY_COLORS, PRIORITY_LABELS, type WorkItemState } from '../types'
+import { RichTextEditor } from './RichTextEditor'
 
 // ─── SearchableDropdown ──────────────────────────────────────────────────────
 
@@ -177,6 +178,7 @@ const BUG_CREATE_STATES: WorkItemState[] = ['New', 'Active']
 
 export function CreateTaskModal({ isOpen, onClose, defaultSprintPath, defaultAssignedTo }: CreateTaskModalProps) {
   const [title, setTitle] = useState('')
+  const [description, setDescription] = useState('')
   const [type, setType] = useState<'Task' | 'Bug'>('Task')
   const [state, setState] = useState<WorkItemState>('Por Hacer')
   const [epicId, setEpicId] = useState<number | null>(null)
@@ -217,6 +219,7 @@ export function CreateTaskModal({ isOpen, onClose, defaultSprintPath, defaultAss
     if (isOpen) {
       setSprintPath(defaultSprintPath || '')
       setTitle('')
+      setDescription('')
       setType('Task')
       setState('Por Hacer')
       setEpicId(null)
@@ -253,6 +256,7 @@ export function CreateTaskModal({ isOpen, onClose, defaultSprintPath, defaultAss
     await createMutation.mutateAsync({
       type,
       title: title.trim(),
+      description: description.trim() || undefined,
       state,
       assignedTo: assignedTo || undefined,
       iterationPath: sprintPath || undefined,
@@ -364,15 +368,10 @@ export function CreateTaskModal({ isOpen, onClose, defaultSprintPath, defaultAss
                   <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/70 flex items-center gap-1.5">
                     <MessageSquare className="w-3.5 h-3.5 text-primary" /> Descripción Detallada
                   </label>
-                  <div className="relative">
-                    <textarea
-                      placeholder="Agrega notas, requisitos técnicos o pasos para reproducir..."
-                      className="w-full bg-muted/10 border border-muted-foreground/10 rounded-xl p-4 text-sm focus:ring-2 focus:ring-primary/10 focus:bg-background outline-none min-h-[120px] transition-all resize-none"
-                    />
-                    <span className="absolute bottom-2 right-3 text-[9px] text-muted-foreground/30 font-bold uppercase">
-                      Markdown · Vista previa en ADO
-                    </span>
-                  </div>
+                  <RichTextEditor
+                    onChange={(html) => setDescription(html)}
+                    placeholder="Agrega notas, requisitos técnicos o pasos para reproducir..."
+                  />
                 </div>
               </div>
 

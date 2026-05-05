@@ -9,7 +9,7 @@ import membersRouter from './routes/members'
 const app = express()
 
 app.use(cors({ origin: ['http://localhost:5173', 'http://localhost:3000'] }))
-app.use(express.json())
+app.use(express.json({ limit: '15mb' }))
 
 app.use('/api/workitems', workitemsRouter)
 app.use('/api/wiql', wiqlRouter)

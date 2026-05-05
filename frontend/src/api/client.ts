@@ -288,6 +288,7 @@ export function updateWorkItem(id: number, patches: PatchOperation[]) {
 export interface CreateWorkItemData {
   type: string
   title: string
+  description?: string
   state?: string
   assignedTo?: string
   iterationPath?: string
@@ -300,11 +301,15 @@ export interface CreateWorkItemData {
 }
 
 export function createWorkItem(data: CreateWorkItemData) {
-  const { type, title, state, assignedTo, iterationPath, parentId, tags, effortPoints, priority, fechaInicio, fechaFin } = data
+  const { type, title, description, state, assignedTo, iterationPath, parentId, tags, effortPoints, priority, fechaInicio, fechaFin } = data
 
   const patches: PatchOperation[] = [
     { op: 'add', path: '/fields/System.Title', value: title },
   ]
+
+  if (description) {
+    patches.push({ op: 'add', path: '/fields/System.Description', value: description })
+  }
 
   if (state) {
     patches.push({ op: 'add', path: '/fields/System.State', value: state })
@@ -324,6 +329,8 @@ export function createWorkItem(data: CreateWorkItemData) {
 
   if (effortPoints !== undefined && effortPoints > 0) {
     patches.push({ op: 'add', path: '/fields/Microsoft.VSTS.Scheduling.Effort', value: effortPoints })
+    // RemainingWork starts equal to Effort at creation (mirrors the Resuelto transition logic)
+    patches.push({ op: 'add', path: '/fields/Microsoft.VSTS.Scheduling.RemainingWork', value: effortPoints })
   }
 
   if (priority !== undefined) {
@@ -347,5 +354,12 @@ export function createWorkItem(data: CreateWorkItemData) {
 export function deleteWorkItem(id: number) {
   return request(`/workitems/${id}`, {
     method: 'DELETE',
+  })
+}
+
+export function createWorkItemComment(id: number, text: string) {
+  return request<{ id: number; text: string; createdDate: string }>(`/workitems/${id}/comments`, {
+    method: 'POST',
+    body: JSON.stringify({ text }),
   })
 }

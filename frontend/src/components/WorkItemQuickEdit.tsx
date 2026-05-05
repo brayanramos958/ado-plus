@@ -1,7 +1,8 @@
-import { useState, useEffect } from 'react'
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
+import { useState, useEffect, useRef } from 'react'
+import { useQuery } from '@tanstack/react-query'
+import * as api from '../api/client'
+import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
 import {
   Select,
   SelectContent,
@@ -9,9 +10,29 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { Loader2, Clock, Calendar, CheckSquare, AlertCircle } from 'lucide-react'
-import { useUpdateWorkItem } from '../hooks/useWorkItems'
-import { TASK_STATES, BUG_STATES, PRIORITY_COLORS, PRIORITY_LABELS, type WorkItemUI } from '../types'
+import { Input } from '@/components/ui/input'
+import {
+  Loader2, Clock, Calendar, AlertCircle, Edit2,
+  User, ChevronDown, Search, X, Tag, Layout, MessageSquare,
+} from 'lucide-react'
+import { useUpdateWorkItem, useMembers, useIterations, useTags } from '../hooks/useWorkItems'
+import { RichTextEditor } from './RichTextEditor'
+import {
+  TASK_STATES, BUG_STATES, PRIORITY_COLORS, PRIORITY_LABELS,
+  TASK_STATE_COLORS, type WorkItemUI,
+} from '../types'
+
+// ISO UTC → valor para input date
+function toDateInput(iso?: string): string {
+  if (!iso) return ''
+  return new Date(iso).toISOString().slice(0, 10)
+}
+
+// Valor de date → ISO UTC
+function toISO(local: string): string {
+  if (!local) return ''
+  return new Date(local).toISOString()
+}
 
 interface WorkItemQuickEditProps {
   workItem: WorkItemUI | null
@@ -19,53 +40,110 @@ interface WorkItemQuickEditProps {
   onClose: () => void
 }
 
-// ISO UTC → valor para input datetime-local (hora local)
-function toLocalInput(iso?: string): string {
-  if (!iso) return ''
-  const d = new Date(iso)
-  const offset = d.getTimezoneOffset() * 60000
-  return new Date(d.getTime() - offset).toISOString().slice(0, 16)
-}
-
-// Valor de datetime-local → ISO UTC
-function toISO(local: string): string {
-  if (!local) return ''
-  return new Date(local).toISOString()
-}
-
 export function WorkItemQuickEdit({ workItem, isOpen, onClose }: WorkItemQuickEditProps) {
+  const [title, setTitle] = useState('')
   const [state, setState] = useState<string>('')
+  const [assignedTo, setAssignedTo] = useState('')
+  const [sprintPath, setSprintPath] = useState('')
+  const [tags, setTags] = useState<string[]>([])
+  const [tagDropdownOpen, setTagDropdownOpen] = useState(false)
+  const [tagSearch, setTagSearch] = useState('')
+  const [description, setDescription] = useState('')
+  const [descriptionTouched, setDescriptionTouched] = useState(false)
+  const [openCount, setOpenCount] = useState(0)
   const [fechaInicio, setFechaInicio] = useState('')
   const [fechaFin, setFechaFin] = useState('')
   const [effortPoints, setEffortPoints] = useState('')
   const [completedWork, setCompletedWork] = useState('')
   const [priority, setPriority] = useState<number | null>(null)
 
+  const tagDropdownRef = useRef<HTMLDivElement>(null)
   const updateMutation = useUpdateWorkItem()
 
-  // Inicializar con valores actuales del work item
+  const { data: members } = useMembers()
+  const { data: iterations } = useIterations()
+  const { data: availableTags } = useTags()
+
+  const { data: fullItem, isLoading: loadingDescription } = useQuery({
+    queryKey: ['workitem-full', workItem?.id],
+    queryFn: () => api.getWorkItemDetails(workItem!.id),
+    enabled: isOpen && !!workItem,
+    staleTime: 5 * 60 * 1000,
+  })
+
+  const existingDescription = fullItem?.fields['System.Description'] ?? ''
+
   useEffect(() => {
     if (isOpen && workItem) {
+      setTitle(workItem.title)
       setState(workItem.state)
-      setFechaInicio(toLocalInput(workItem.fechaInicio))
-      setFechaFin(toLocalInput(workItem.fechaFin))
+      setAssignedTo(workItem.assignedTo ?? '')
+      setSprintPath(workItem.iterationPath ?? '')
+      setTags(workItem.tags ?? [])
+      setDescription('')
+      setDescriptionTouched(false)
+      setFechaInicio(toDateInput(workItem.fechaInicio))
+      setFechaFin(toDateInput(workItem.fechaFin))
       setEffortPoints(workItem.effortPoints != null ? String(workItem.effortPoints) : '')
       setCompletedWork(workItem.completedWork != null ? String(workItem.completedWork) : '')
       setPriority(workItem.priority ?? null)
+      setTagDropdownOpen(false)
+      setTagSearch('')
+      setOpenCount((c) => c + 1)
     }
   }, [isOpen, workItem])
+
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (tagDropdownRef.current && !tagDropdownRef.current.contains(e.target as Node)) {
+        setTagDropdownOpen(false)
+        setTagSearch('')
+      }
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [])
 
   if (!workItem) return null
 
   const states = workItem.type === 'Bug' ? BUG_STATES : TASK_STATES
-
   const effortFieldToWrite = workItem.effortField ?? 'Microsoft.VSTS.Scheduling.Effort'
+
+  const toggleTag = (tagName: string) => {
+    setTags((prev) => prev.includes(tagName) ? prev.filter((t) => t !== tagName) : [...prev, tagName])
+  }
+
+  const filteredTags = (availableTags?.value ?? []).filter(
+    (t) => t.active && t.name.toLowerCase().includes(tagSearch.toLowerCase())
+  )
 
   const handleSave = async () => {
     const patches: Array<{ op: 'add'; path: string; value: string | number }> = []
 
+    if (title.trim() && title.trim() !== workItem.title) {
+      patches.push({ op: 'add', path: '/fields/System.Title', value: title.trim() })
+    }
+
     if (state !== workItem.state) {
       patches.push({ op: 'add', path: '/fields/System.State', value: state })
+    }
+
+    if (assignedTo !== (workItem.assignedTo ?? '')) {
+      patches.push({ op: 'add', path: '/fields/System.AssignedTo', value: assignedTo })
+    }
+
+    if (sprintPath !== (workItem.iterationPath ?? '')) {
+      patches.push({ op: 'add', path: '/fields/System.IterationPath', value: sprintPath })
+    }
+
+    const newTagsStr = tags.join('; ')
+    const prevTagsStr = (workItem.tags ?? []).join('; ')
+    if (newTagsStr !== prevTagsStr) {
+      patches.push({ op: 'add', path: '/fields/System.Tags', value: newTagsStr })
+    }
+
+    if (descriptionTouched) {
+      patches.push({ op: 'add', path: '/fields/System.Description', value: description })
     }
 
     const newFechaInicio = fechaInicio ? toISO(fechaInicio) : ''
@@ -94,182 +172,299 @@ export function WorkItemQuickEdit({ workItem, isOpen, onClose }: WorkItemQuickEd
       patches.push({ op: 'add', path: '/fields/Microsoft.VSTS.Common.Priority', value: priority })
     }
 
-    if (patches.length === 0) {
-      onClose()
-      return
-    }
+    if (patches.length === 0) { onClose(); return }
 
     await updateMutation.mutateAsync({ id: workItem.id, patches })
     onClose()
   }
 
-  const stateColor: Record<string, string> = {
-    'Por Hacer': 'text-gray-400',
-    'Planeado': 'text-yellow-500',
-    'En proceso': 'text-blue-500',
-    'Bloqueado': 'text-red-500',
-    'Resuelto': 'text-orange-500',
-    'Cerrado': 'text-green-500',
-    'New': 'text-gray-400',
-    'Active': 'text-blue-500',
-    'Resolved': 'text-orange-500',
-    'Closed': 'text-green-500',
-  }
+  const stateChanged = state !== workItem.state
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="max-w-sm w-[95vw] gap-0 p-0 overflow-hidden">
-
+      <DialogContent
+        showCloseButton={false}
+        className="max-w-5xl w-[95vw] max-h-[90vh] p-0 gap-0 overflow-hidden rounded-2xl border-none shadow-2xl flex flex-col"
+      >
         {/* Header */}
-        <DialogHeader className="px-5 pt-5 pb-4 border-b border-border">
-          <div className="flex items-start gap-2">
-            <CheckSquare className="w-4 h-4 text-primary mt-0.5 flex-shrink-0" />
-            <div className="min-w-0">
-              <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-0.5">
-                #{workItem.id} · Edición rápida
-              </p>
-              <DialogTitle className="text-sm font-semibold text-foreground leading-snug line-clamp-2">
-                {workItem.title}
-              </DialogTitle>
+        <div className={`px-6 py-4 flex items-center gap-4 bg-gradient-to-r transition-all duration-700 ${workItem.type === 'Bug' ? 'from-red-600 to-red-700' : 'from-primary/80 to-primary'}`}>
+          <div className="w-9 h-9 bg-white/20 rounded-xl flex items-center justify-center flex-shrink-0 border border-white/10">
+            <Edit2 className="w-5 h-5 text-white" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-[9px] font-black text-white/60 uppercase tracking-[0.3em]">
+              #{workItem.id} · {workItem.type}
+            </p>
+            <DialogTitle className="text-lg font-black text-white tracking-tight leading-none truncate">
+              Editar elemento de trabajo
+            </DialogTitle>
+          </div>
+          <Button variant="ghost" size="icon" onClick={onClose}
+            className="w-9 h-9 text-white/40 hover:text-white hover:bg-white/10 rounded-xl transition-all group">
+            <X className="w-5 h-5 group-hover:rotate-90 transition-transform duration-300" />
+          </Button>
+        </div>
+
+        {/* Body */}
+        <div className="flex-1 overflow-y-auto px-6 py-5">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+
+            {/* Columna principal (8/12) */}
+            <div className="lg:col-span-8 space-y-5">
+
+              {/* Título */}
+              <div className="space-y-2">
+                <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/70 flex items-center gap-1.5">
+                  <Layout className="w-3.5 h-3.5 text-primary" /> Título
+                </label>
+                <input
+                  value={title}
+                  onChange={(e) => setTitle(e.target.value)}
+                  placeholder="Título del elemento..."
+                  className="w-full bg-transparent border-b-2 border-muted-foreground/10 py-2 text-xl font-black focus:border-primary outline-none transition-all placeholder:text-muted-foreground/20"
+                />
+              </div>
+
+              {/* Descripción */}
+              <div className="space-y-2">
+                <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/70 flex items-center gap-1.5">
+                  <MessageSquare className="w-3.5 h-3.5 text-primary" /> Descripción
+                </label>
+                {loadingDescription ? (
+                  <div className="h-32 rounded-2xl border border-muted-foreground/15 bg-muted/10 animate-pulse" />
+                ) : (
+                  <RichTextEditor
+                    key={`desc-${workItem.id}-${openCount}`}
+                    initialContent={existingDescription}
+                    onChange={(html) => { setDescription(html); setDescriptionTouched(true) }}
+                    placeholder="Escribe para actualizar la descripción..."
+                  />
+                )}
+              </div>
+            </div>
+
+            {/* Sidebar (4/12) */}
+            <div className="lg:col-span-4 space-y-4">
+
+              {/* Estado */}
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground/50">Estado</label>
+                <div className="flex flex-wrap gap-1.5">
+                  {states.map((s) => (
+                    <button
+                      key={s}
+                      type="button"
+                      onClick={() => setState(s)}
+                      className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase transition-all border ${state === s ? 'text-white border-transparent shadow-sm' : 'bg-background text-muted-foreground border-muted-foreground/10 hover:bg-muted/40'}`}
+                      style={state === s ? { backgroundColor: TASK_STATE_COLORS[s as keyof typeof TASK_STATE_COLORS] } : {}}
+                    >
+                      {s}
+                    </button>
+                  ))}
+                </div>
+                {stateChanged && (
+                  <div className="flex items-center gap-2 text-xs bg-primary/5 border border-primary/20 rounded-lg px-3 py-1.5 mt-1">
+                    <span className="font-medium text-muted-foreground">{workItem.state}</span>
+                    <span className="text-muted-foreground">→</span>
+                    <span className="font-black text-primary">{state}</span>
+                  </div>
+                )}
+              </div>
+
+              {/* Asignado a */}
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground/50 flex items-center gap-1.5">
+                  <User className="w-3 h-3" /> Asignar Responsable
+                </label>
+                <Select value={assignedTo || '__none__'} onValueChange={(v) => setAssignedTo(!v || v === '__none__' ? '' : v)}>
+                  <SelectTrigger className="h-9 bg-muted/20 border-transparent rounded-xl text-xs">
+                    <SelectValue placeholder="Sin asignar" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__none__">Sin asignar</SelectItem>
+                    {(members?.value ?? []).map((m) => (
+                      <SelectItem key={m.email} value={m.email}>
+                        {m.displayName}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Sprint */}
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground/50">Sprint</label>
+                <Select value={sprintPath || '__none__'} onValueChange={(v) => setSprintPath(!v || v === '__none__' ? '' : v)}>
+                  <SelectTrigger className="h-9 bg-muted/20 border-transparent rounded-xl text-xs">
+                    <SelectValue placeholder="Sin sprint" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__none__">Sin sprint</SelectItem>
+                    {(iterations?.value ?? []).map((i) => (
+                      <SelectItem key={i.id} value={i.path}>
+                        {i.name}{i.attributes.timeFrame === 'current' ? ' (actual)' : ''}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Etiquetas */}
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground/50 flex items-center gap-1.5">
+                  <Tag className="w-3 h-3" /> Etiquetas
+                </label>
+                {tags.length > 0 && (
+                  <div className="flex flex-wrap gap-1.5">
+                    {tags.map((tag) => (
+                      <span key={tag} className="flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] font-bold bg-primary/10 text-primary border border-primary/20">
+                        {tag}
+                        <button type="button" onClick={() => toggleTag(tag)} className="hover:text-destructive transition-colors">
+                          <X className="w-2.5 h-2.5" />
+                        </button>
+                      </span>
+                    ))}
+                  </div>
+                )}
+                <div ref={tagDropdownRef} className="relative">
+                  <button
+                    type="button"
+                    onClick={() => { setTagDropdownOpen((o) => !o); setTagSearch('') }}
+                    className="w-full h-9 flex items-center justify-between px-3 rounded-xl border border-muted-foreground/10 bg-background text-xs text-muted-foreground hover:bg-muted/30 transition-colors"
+                  >
+                    <span>{tags.length > 0 ? `${tags.length} seleccionada${tags.length !== 1 ? 's' : ''}` : 'Seleccionar etiquetas...'}</span>
+                    <ChevronDown className={`w-3.5 h-3.5 transition-transform ${tagDropdownOpen ? 'rotate-180' : ''}`} />
+                  </button>
+                  {tagDropdownOpen && (
+                    <div className="absolute z-50 top-full mt-1 w-full bg-popover border border-border rounded-xl shadow-xl overflow-hidden">
+                      <div className="flex items-center gap-2 px-3 py-2 border-b border-border">
+                        <Search className="w-3.5 h-3.5 text-muted-foreground/40 flex-shrink-0" />
+                        <input
+                          autoFocus
+                          value={tagSearch}
+                          onChange={(e) => setTagSearch(e.target.value)}
+                          placeholder="Buscar etiqueta..."
+                          className="flex-1 text-xs bg-transparent outline-none placeholder:text-muted-foreground/40"
+                        />
+                        {tagSearch && (
+                          <button type="button" onClick={() => setTagSearch('')} className="text-muted-foreground/40 hover:text-foreground">
+                            <X className="w-3 h-3" />
+                          </button>
+                        )}
+                      </div>
+                      <div className="max-h-40 overflow-y-auto py-1">
+                        {filteredTags.length === 0 ? (
+                          <p className="text-[10px] text-muted-foreground/40 text-center py-3">
+                            {tagSearch ? `Sin resultados para "${tagSearch}"` : 'Sin etiquetas disponibles'}
+                          </p>
+                        ) : (
+                          filteredTags.map((t) => {
+                            const selected = tags.includes(t.name)
+                            return (
+                              <button
+                                key={t.id}
+                                type="button"
+                                onClick={() => toggleTag(t.name)}
+                                className={`w-full flex items-center gap-2 px-3 py-2 text-xs text-left transition-colors hover:bg-muted/40 ${selected ? 'text-primary font-bold' : 'text-foreground'}`}
+                              >
+                                <div className={`w-3.5 h-3.5 rounded flex-shrink-0 border flex items-center justify-center transition-colors ${selected ? 'bg-primary border-primary' : 'border-muted-foreground/30'}`}>
+                                  {selected && <span className="text-white text-[8px] font-black">✓</span>}
+                                </div>
+                                {t.name}
+                              </button>
+                            )
+                          })
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Prioridad */}
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground/50 flex items-center gap-1.5">
+                  <AlertCircle className="w-3 h-3" /> Prioridad
+                </label>
+                <div className="grid grid-cols-4 gap-1.5">
+                  {([1, 2, 3, 4] as const).map((p) => (
+                    <button
+                      key={p}
+                      type="button"
+                      onClick={() => setPriority(p)}
+                      className={`h-10 rounded-xl text-[10px] font-black transition-all border-2 flex flex-col items-center justify-center gap-0.5
+                        ${priority === p ? 'text-white border-transparent shadow-sm' : 'bg-background text-muted-foreground border-muted-foreground/10 hover:bg-muted/40'}`}
+                      style={priority === p ? { backgroundColor: PRIORITY_COLORS[p] } : {}}
+                    >
+                      <span className="font-black">P{p}</span>
+                      <span className="text-[8px] opacity-80 leading-none">{PRIORITY_LABELS[p]}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Esfuerzo */}
+              <div className="grid grid-cols-2 gap-2">
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground/50 flex items-center gap-1">
+                    <Clock className="w-3 h-3" /> Estimado (h)
+                  </label>
+                  <Input type="number" min="0" step="0.5" value={effortPoints}
+                    onChange={(e) => setEffortPoints(e.target.value)} placeholder="0" className="h-9" />
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground/50 flex items-center gap-1">
+                    <Clock className="w-3 h-3" /> Registrado (h)
+                  </label>
+                  <Input type="number" min="0" step="0.5" value={completedWork}
+                    onChange={(e) => setCompletedWork(e.target.value)} placeholder="0" className="h-9" />
+                </div>
+              </div>
+
+              {/* Fechas */}
+              <div className="grid grid-cols-2 gap-2">
+                <div className="space-y-1.5">
+                  <label className="text-[9px] font-black uppercase tracking-widest text-muted-foreground/40 flex items-center gap-1">
+                    <Calendar className="w-2.5 h-2.5" /> Inicio
+                  </label>
+                  <div className="flex items-center bg-background rounded-xl px-3 py-2 border border-muted-foreground/10">
+                    <input type="date" value={fechaInicio} onChange={(e) => setFechaInicio(e.target.value)}
+                      className="w-full text-xs bg-transparent outline-none" />
+                  </div>
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-[9px] font-black uppercase tracking-widest text-muted-foreground/40 flex items-center gap-1">
+                    <Calendar className="w-2.5 h-2.5" /> Fin
+                  </label>
+                  <div className="flex items-center bg-background rounded-xl px-3 py-2 border border-muted-foreground/10">
+                    <input type="date" value={fechaFin} onChange={(e) => setFechaFin(e.target.value)}
+                      className="w-full text-xs bg-transparent outline-none" />
+                  </div>
+                </div>
+              </div>
+
+              {/* Error */}
+              {updateMutation.isError && (
+                <div className="px-3 py-2 bg-destructive/10 border border-destructive/20 rounded-lg text-xs text-destructive">
+                  {updateMutation.error instanceof Error ? updateMutation.error.message : 'Error al guardar'}
+                </div>
+              )}
             </div>
           </div>
-        </DialogHeader>
-
-        {/* Fields */}
-        <div className="px-5 py-4 space-y-4">
-
-          {/* Estado */}
-          <div className="space-y-1.5">
-            <label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground block">
-              Estado
-            </label>
-            <Select value={state} onValueChange={(v) => v && setState(v)}>
-              <SelectTrigger className="w-full h-9">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {states.map((s) => (
-                  <SelectItem key={s} value={s}>
-                    <span className={`font-medium ${stateColor[s] ?? ''}`}>{s}</span>
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          {/* Fechas */}
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-1.5">
-              <label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1">
-                <Calendar className="w-3 h-3" /> Inicio
-              </label>
-              <Input
-                type="datetime-local"
-                value={fechaInicio}
-                onChange={(e) => setFechaInicio(e.target.value)}
-                className="h-9 text-xs px-2"
-              />
-            </div>
-            <div className="space-y-1.5">
-              <label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1">
-                <Calendar className="w-3 h-3" /> Fin
-              </label>
-              <Input
-                type="datetime-local"
-                value={fechaFin}
-                onChange={(e) => setFechaFin(e.target.value)}
-                className="h-9 text-xs px-2"
-              />
-            </div>
-          </div>
-
-          {/* Prioridad */}
-          <div className="space-y-1.5">
-            <label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1">
-              <AlertCircle className="w-3 h-3" /> Prioridad
-            </label>
-            <div className="grid grid-cols-4 gap-1.5">
-              {([1, 2, 3, 4] as const).map((p) => (
-                <button
-                  key={p}
-                  type="button"
-                  onClick={() => setPriority(p)}
-                  className={`h-9 rounded-lg text-[10px] font-black transition-all border-2 flex flex-col items-center justify-center gap-0.5
-                    ${priority === p ? 'text-white border-transparent shadow-sm' : 'bg-background text-muted-foreground border-muted-foreground/10 hover:bg-muted/40'}`}
-                  style={priority === p ? { backgroundColor: PRIORITY_COLORS[p] } : {}}
-                >
-                  <span className="font-black">P{p}</span>
-                  <span className="text-[8px] opacity-80 leading-none">{PRIORITY_LABELS[p]}</span>
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* Horas */}
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-1.5">
-              <label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1">
-                <Clock className="w-3 h-3" /> Estimado (h)
-              </label>
-              <Input
-                type="number"
-                min="0"
-                step="0.5"
-                value={effortPoints}
-                onChange={(e) => setEffortPoints(e.target.value)}
-                placeholder="0"
-                className="h-9"
-              />
-            </div>
-            <div className="space-y-1.5">
-              <label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1">
-                <Clock className="w-3 h-3" /> Registrado (h)
-              </label>
-              <Input
-                type="number"
-                min="0"
-                step="0.5"
-                value={completedWork}
-                onChange={(e) => setCompletedWork(e.target.value)}
-                placeholder="0"
-                className="h-9"
-              />
-            </div>
-          </div>
-
-          {/* Resumen de cambio si se modifica el estado */}
-          {state !== workItem.state && (
-            <div className="flex items-center gap-2 text-xs bg-primary/5 border border-primary/20 rounded-lg px-3 py-2">
-              <span className={`font-medium ${stateColor[workItem.state] ?? 'text-muted-foreground'}`}>
-                {workItem.state}
-              </span>
-              <span className="text-muted-foreground">→</span>
-              <span className={`font-medium ${stateColor[state] ?? 'text-muted-foreground'}`}>
-                {state}
-              </span>
-            </div>
-          )}
-
-          {/* Error */}
-          {updateMutation.isError && (
-            <div className="px-3 py-2 bg-destructive/10 border border-destructive/20 rounded-lg text-xs text-destructive">
-              {updateMutation.error instanceof Error
-                ? updateMutation.error.message
-                : 'Error al guardar'}
-            </div>
-          )}
         </div>
 
         {/* Footer */}
-        <DialogFooter className="px-5 py-3 gap-2 border-t border-border bg-muted/30 flex-row justify-end -mx-0 -mb-0 rounded-b-xl">
-          <Button variant="outline" size="sm" onClick={onClose} disabled={updateMutation.isPending}>
+        <div className="px-6 py-4 border-t border-border flex items-center justify-end gap-3 bg-muted/30">
+          <Button variant="outline" onClick={onClose} disabled={updateMutation.isPending}
+            className="h-11 px-8 rounded-xl font-black text-[11px] uppercase tracking-widest border-muted-foreground/15 hover:bg-muted/50 transition-all active:scale-95">
             Cancelar
           </Button>
-          <Button size="sm" onClick={handleSave} disabled={updateMutation.isPending}>
-            {updateMutation.isPending && <Loader2 className="w-3.5 h-3.5 animate-spin mr-1" />}
-            {updateMutation.isPending ? 'Guardando...' : 'Guardar'}
+          <Button onClick={handleSave} disabled={updateMutation.isPending}
+            className="h-11 px-8 rounded-xl font-black text-[11px] uppercase tracking-widest shadow-lg transition-all active:scale-95 flex items-center gap-2">
+            {updateMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
+            {updateMutation.isPending ? 'Guardando...' : 'Guardar cambios'}
           </Button>
-        </DialogFooter>
+        </div>
 
       </DialogContent>
     </Dialog>

@@ -1,8 +1,15 @@
+import { useRef, useEffect } from 'react'
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
-import { TASK_STATE_COLORS, type WorkItemUI, type Member } from '../types'
-import { Calendar, Tag, User, MessageSquare, ChevronRight, Layout, Box, Target, Loader2, X, Clock } from 'lucide-react'
-import { useWorkItemHierarchy, useWorkItemComments } from '../hooks/useWorkItems'
+import { TASK_STATE_COLORS, PRIORITY_COLORS, PRIORITY_LABELS, type WorkItemUI, type Member } from '../types'
+import {
+  Calendar, Tag, User, MessageSquare, ChevronRight, Layout,
+  Box, Target, Loader2, X, Clock, Zap, Flag, GitBranch, ExternalLink,
+} from 'lucide-react'
+import { useWorkItemHierarchy, useWorkItemComments, useCreateWorkItemComment, useHealth } from '../hooks/useWorkItems'
+import { RichTextEditor } from './RichTextEditor'
+import { TypeBadge } from './Badge'
+import { Avatar } from './Avatar'
 
 interface WorkItemModalProps {
   workItem: WorkItemUI | undefined
@@ -11,246 +18,331 @@ interface WorkItemModalProps {
   onClose: () => void
 }
 
+function MetaRow({ icon, label, children }: { icon: React.ReactNode; label: string; children: React.ReactNode }) {
+  return (
+    <div className="flex items-start gap-3 py-3 border-b border-muted-foreground/5 last:border-0">
+      <div className="w-8 h-8 flex-shrink-0 rounded-lg bg-muted/30 flex items-center justify-center text-muted-foreground mt-0.5">
+        {icon}
+      </div>
+      <div className="flex-1 min-w-0">
+        <p className="text-[9px] font-black uppercase tracking-widest text-muted-foreground/50 mb-0.5">{label}</p>
+        <div className="text-sm font-semibold text-foreground/85">{children}</div>
+      </div>
+    </div>
+  )
+}
+
+function fmtDate(iso?: string) {
+  if (!iso) return '—'
+  return new Date(iso).toLocaleDateString('es', { day: '2-digit', month: 'short', year: 'numeric' })
+}
+
 export function WorkItemModal({ workItem, isOpen, onClose }: WorkItemModalProps) {
-  const { data: hierarchy, isLoading: loadingHierarchy } = useWorkItemHierarchy(isOpen ? workItem?.id || null : null)
-  const { data: commentsData, isLoading: loadingComments } = useWorkItemComments(isOpen ? workItem?.id || null : null)
+  const { data: hierarchy, isLoading: loadingHierarchy } = useWorkItemHierarchy(isOpen ? workItem?.id ?? null : null)
+  const { data: commentsData, isLoading: loadingComments } = useWorkItemComments(isOpen ? workItem?.id ?? null : null)
+  const createComment = useCreateWorkItemComment(workItem?.id ?? 0)
+  const { data: health } = useHealth()
+  const commentsListRef = useRef<HTMLDivElement>(null)
+
+  // Sort oldest → newest so the last comment is always at the bottom
+  const comments = [...(commentsData?.comments ?? commentsData?.value ?? [])].sort(
+    (a, b) => new Date(a.createdDate).getTime() - new Date(b.createdDate).getTime()
+  )
+
+  // Scroll to the newest comment after load or after posting
+  useEffect(() => {
+    if (!loadingComments && commentsListRef.current) {
+      commentsListRef.current.scrollTop = commentsListRef.current.scrollHeight
+    }
+  }, [loadingComments, comments.length])
 
   if (!workItem) return null
 
-  // Fallback for Epic/Feature if not found
-  const epicTitle = hierarchy?.epic?.fields['System.Title'] || 'Sin Épica asociada'
-  const featureTitle = hierarchy?.feature?.fields['System.Title'] || 'Sin Feature asociado'
-  const comments = commentsData?.comments || commentsData?.value || []
+  const epicTitle = hierarchy?.epic?.fields['System.Title'] ?? 'Sin Épica'
+  const featureTitle = hierarchy?.feature?.fields['System.Title'] ?? 'Sin Feature'
+  const sprintName = workItem.iterationPath.split(/[/\\]/).pop() ?? workItem.iterationPath
+
+  const adoUrl = health
+    ? `https://dev.azure.com/${health.org}/${encodeURIComponent(health.project)}/_workitems/edit/${workItem.id}`
+    : `https://dev.azure.com/itsinfocom/DESARROLLO%20TECNOLOGICO/_workitems/edit/${workItem.id}`
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()} disablePointerDismissal>
       <DialogContent
         showCloseButton={false}
-        className="max-w-7xl w-[95vw] max-h-[90vh] overflow-hidden flex flex-col p-0 gap-0 rounded-2xl border-none shadow-2xl"
+        className="max-w-6xl w-[95vw] max-h-[92vh] overflow-hidden flex flex-col p-0 gap-0 rounded-2xl border-none shadow-2xl"
       >
-        {/* Header con Gradiente y Jerarquía */}
-        <div className="bg-gradient-to-r from-slate-800 to-slate-900 px-8 py-6 flex items-start gap-5">
-          <div className="w-12 h-12 bg-white/10 backdrop-blur-md rounded-2xl flex items-center justify-center flex-shrink-0 shadow-inner border border-white/5 ring-4 ring-white/5">
-            <Layout className="w-6 h-6 text-white" />
+        {/* ── Header ── */}
+        <div className="bg-gradient-to-r from-slate-800 to-slate-900 px-7 py-5 flex items-start gap-4 flex-shrink-0">
+          <div className="w-11 h-11 bg-white/10 rounded-xl flex items-center justify-center flex-shrink-0 border border-white/10">
+            <Layout className="w-5 h-5 text-white" />
           </div>
           <div className="flex-1 min-w-0">
-            <div className="flex flex-wrap items-center gap-2 text-[10px] font-black text-white/40 uppercase tracking-[0.3em] mb-2">
+            {/* Breadcrumb */}
+            <div className="flex flex-wrap items-center gap-1.5 text-[10px] font-bold text-white/40 uppercase tracking-widest mb-2">
               {loadingHierarchy ? (
-                <span className="flex items-center gap-2"><Loader2 className="w-3 h-3 animate-spin" /> Cargando...</span>
+                <Loader2 className="w-3 h-3 animate-spin" />
               ) : (
                 <>
-                  <span className="flex items-center gap-1.5 hover:text-white/80 transition-colors">
-                    <Target className="w-3 h-3 text-orange-500" /> {epicTitle}
-                  </span>
-                  <ChevronRight className="w-3 h-3 opacity-30" />
-                  <span className="flex items-center gap-1.5 hover:text-white/80 transition-colors">
-                    <Box className="w-3 h-3 text-blue-400" /> {featureTitle}
-                  </span>
+                  <Target className="w-3 h-3 text-orange-400 flex-shrink-0" />
+                  <span className="truncate max-w-[180px]">{epicTitle}</span>
+                  <ChevronRight className="w-3 h-3 opacity-30 flex-shrink-0" />
+                  <Box className="w-3 h-3 text-blue-400 flex-shrink-0" />
+                  <span className="truncate max-w-[200px]">{featureTitle}</span>
                 </>
               )}
             </div>
-            <DialogTitle className="text-2xl font-black text-white tracking-tight leading-none flex items-baseline gap-3">
-              <span className="text-primary font-mono text-lg opacity-80">#{workItem.id}</span>
-              {workItem.title}
-            </DialogTitle>
+            {/* Title row */}
+            <div className="flex items-start gap-3 flex-wrap">
+              <DialogTitle className="text-xl font-black text-white leading-tight flex items-baseline gap-2">
+                <span className="text-primary/70 font-mono text-base">#{workItem.id}</span>
+                {workItem.title}
+              </DialogTitle>
+            </div>
+            {/* Badges row */}
+            <div className="flex items-center gap-2 mt-2 flex-wrap">
+              <TypeBadge type={workItem.type} />
+              <span
+                className="px-2.5 py-0.5 rounded-full text-[10px] font-black text-white uppercase tracking-wide"
+                style={{ backgroundColor: TASK_STATE_COLORS[workItem.state] }}
+              >
+                {workItem.state}
+              </span>
+              {workItem.priority != null && (
+                <span className="flex items-center gap-1 text-[10px] font-black text-white/60">
+                  <span
+                    className="w-2.5 h-2.5 rounded-full flex-shrink-0"
+                    style={{ backgroundColor: PRIORITY_COLORS[workItem.priority] }}
+                  />
+                  P{workItem.priority} · {PRIORITY_LABELS[workItem.priority]}
+                </span>
+              )}
+            </div>
           </div>
-          <Button
-            variant="ghost"
-            size="icon"
+          <button
             onClick={onClose}
-            className="w-10 h-10 text-white/40 hover:text-white hover:bg-white/10 rounded-xl transition-all group"
+            className="w-9 h-9 flex items-center justify-center rounded-xl text-white/40 hover:text-white hover:bg-white/10 transition-all group flex-shrink-0"
           >
-            <X className="w-5 h-5 group-hover:rotate-90 transition-transform duration-300" />
-          </Button>
+            <X className="w-4.5 h-4.5 group-hover:rotate-90 transition-transform duration-200" />
+          </button>
         </div>
 
-        {/* Contenido Principal: 3 Columnas (8:4) */}
-        <div className="flex-1 overflow-y-auto px-10 py-10 space-y-10 bg-background custom-scrollbar">
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 max-w-[1400px] mx-auto">
-            
-            {/* Columna Principal: Descripción y Comentarios (8/12) */}
-            <div className="lg:col-span-8 space-y-10">
-              
-              {/* Descripción */}
-              <section className="space-y-4">
-                <div className="flex items-center gap-2">
-                  <div className="h-5 w-1.5 bg-primary rounded-full shadow-[0_0_10px_rgba(var(--primary),0.5)]" />
-                  <h3 className="text-[11px] font-black uppercase tracking-[0.2em] text-muted-foreground/80">Descripción del Trabajo</h3>
+        {/* ── Main scrollable body ── */}
+        <div className="flex-1 overflow-y-auto bg-background">
+
+          {/* ── Top section: Description + Metadata ── */}
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-0 border-b border-border">
+
+            {/* Description (left) */}
+            <div className="lg:col-span-7 p-7 border-r border-border">
+              <div className="flex items-center gap-2 mb-4">
+                <div className="h-4 w-1 bg-primary rounded-full" />
+                <h3 className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/70">Descripción</h3>
+              </div>
+              {loadingHierarchy ? (
+                <div className="flex items-center justify-center h-32 rounded-xl bg-muted/10">
+                  <Loader2 className="w-6 h-6 animate-spin text-muted-foreground/20" />
                 </div>
-                
-                {loadingHierarchy ? (
-                  <div className="flex items-center justify-center h-40 bg-muted/10 rounded-[2rem] border-2 border-dashed border-muted-foreground/10">
-                    <Loader2 className="w-8 h-8 animate-spin text-muted-foreground/20" />
+              ) : hierarchy?.task?.fields['System.Description'] ? (
+                <div
+                  className="tiptap-content text-sm text-foreground/80 leading-relaxed"
+                  dangerouslySetInnerHTML={{ __html: hierarchy.task.fields['System.Description'] as string }}
+                />
+              ) : (
+                <p className="text-sm italic text-muted-foreground/40">Sin descripción registrada.</p>
+              )}
+            </div>
+
+            {/* Metadata panel (right) */}
+            <div className="lg:col-span-5 p-6">
+              <div className="flex items-center gap-2 mb-3">
+                <div className="h-4 w-1 bg-primary/40 rounded-full" />
+                <h3 className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/70">Información de la Tarea</h3>
+              </div>
+
+              <div className="divide-y divide-muted-foreground/5">
+                {/* Assignee */}
+                <MetaRow icon={<User className="w-3.5 h-3.5" />} label="Responsable">
+                  <div className="flex items-center gap-2">
+                    <Avatar name={workItem.assignedToName ?? workItem.assignedTo ?? 'Sin asignar'} />
+                    <div className="min-w-0">
+                      <p className="text-xs font-bold truncate">{workItem.assignedToName || 'Sin asignar'}</p>
+                      {workItem.assignedTo && (
+                        <p className="text-[10px] text-muted-foreground truncate">{workItem.assignedTo}</p>
+                      )}
+                    </div>
                   </div>
-                ) : (
-                  <div className="text-sm leading-relaxed text-foreground/80 bg-muted/5 p-8 rounded-[2rem] border border-muted-foreground/5 prose prose-sm dark:prose-invert max-w-none shadow-inner">
-                    {hierarchy?.task?.fields['System.Description'] ? (
-                      <div dangerouslySetInnerHTML={{ __html: hierarchy.task.fields['System.Description'] as string }} />
-                    ) : hierarchy?.task?.fields['System.History'] ? (
-                      <div dangerouslySetInnerHTML={{ __html: hierarchy.task.fields['System.History'] as string }} />
-                    ) : (
-                      <p className="italic text-muted-foreground/40 text-center py-4">No hay una descripción detallada disponible.</p>
-                    )}
-                  </div>
+                </MetaRow>
+
+                {/* Priority */}
+                {workItem.priority != null && (
+                  <MetaRow icon={<Flag className="w-3.5 h-3.5" />} label="Prioridad">
+                    <div className="flex items-center gap-2">
+                      <span
+                        className="w-3 h-3 rounded-full flex-shrink-0"
+                        style={{ backgroundColor: PRIORITY_COLORS[workItem.priority] }}
+                      />
+                      <span>P{workItem.priority} — {PRIORITY_LABELS[workItem.priority]}</span>
+                    </div>
+                  </MetaRow>
                 )}
-              </section>
 
-              {/* Comentarios */}
-              <section className="space-y-6">
-                <div className="flex items-center gap-2">
-                  <div className="h-5 w-1.5 bg-primary/40 rounded-full" />
-                  <h3 className="text-[11px] font-black uppercase tracking-[0.2em] text-muted-foreground/80">Hilo de Actividad</h3>
-                </div>
+                {/* Sprint */}
+                <MetaRow icon={<GitBranch className="w-3.5 h-3.5" />} label="Sprint / Iteración">
+                  <span className="text-xs">{sprintName}</span>
+                </MetaRow>
 
-                <div className="space-y-6">
-                  {loadingComments ? (
-                    <div className="flex justify-center p-8"><Loader2 className="w-6 h-6 animate-spin text-muted-foreground/20" /></div>
-                  ) : comments.length > 0 ? (
-                    <div className="space-y-5 max-h-[400px] overflow-y-auto pr-4 custom-scrollbar">
-                      {comments.map((comment) => (
-                        <div key={comment.id} className="flex gap-4 group">
-                          <div className="flex-shrink-0">
-                            {comment.createdBy?.imageUrl ? (
-                              <img src={comment.createdBy.imageUrl} alt={comment.createdBy.displayName} className="w-10 h-10 rounded-2xl border border-border shadow-sm group-hover:scale-105 transition-transform" />
-                            ) : (
-                              <div className="w-10 h-10 rounded-2xl bg-primary/10 flex items-center justify-center text-xs font-black text-primary border border-primary/20">
-                                {comment.createdBy?.displayName?.charAt(0) || '?'}
-                              </div>
-                            )}
-                          </div>
-                          <div className="flex-1 bg-muted/20 p-4 rounded-2xl text-xs border border-transparent group-hover:border-muted-foreground/10 transition-all group-hover:bg-muted/30">
-                            <div className="flex justify-between mb-2 items-start gap-2">
-                              <span className="font-black text-foreground/90 text-sm tracking-tight">{comment.createdBy?.displayName}</span>
-                              <span className="text-[10px] text-muted-foreground font-bold uppercase opacity-60">
-                                {new Date(comment.createdDate).toLocaleDateString()}
-                              </span>
-                            </div>
-                            <div className="text-foreground/70 prose prose-xs dark:prose-invert max-w-none leading-relaxed" dangerouslySetInnerHTML={{ __html: comment.text }} />
-                          </div>
+                {/* Effort */}
+                <MetaRow icon={<Clock className="w-3.5 h-3.5" />} label="Esfuerzo estimado">
+                  <span>{workItem.effortPoints != null ? `${workItem.effortPoints} h` : '—'}</span>
+                </MetaRow>
+
+                {/* Remaining / Completed */}
+                <MetaRow icon={<Zap className="w-3.5 h-3.5" />} label="Trabajo restante">
+                  <span>{workItem.completedWork != null ? `${workItem.completedWork} h` : '—'}</span>
+                </MetaRow>
+
+                {/* Dates */}
+                <MetaRow icon={<Calendar className="w-3.5 h-3.5" />} label="Fechas">
+                  <div className="text-xs space-y-0.5">
+                    <p>▶ Inicio: <span className="font-bold">{fmtDate(workItem.fechaInicio)}</span></p>
+                    <p>■ Fin: <span className="font-bold">{fmtDate(workItem.fechaFin)}</span></p>
+                  </div>
+                </MetaRow>
+
+                {/* Tags */}
+                {workItem.tags.filter((t) => !t.startsWith('assignee:')).length > 0 && (
+                  <MetaRow icon={<Tag className="w-3.5 h-3.5" />} label="Tags">
+                    <div className="flex flex-wrap gap-1 mt-0.5">
+                      {workItem.tags
+                        .filter((t) => !t.startsWith('assignee:'))
+                        .map((tag) => (
+                          <span key={tag} className="px-2 py-0.5 bg-primary/8 text-primary border border-primary/15 rounded-lg text-[10px] font-bold">
+                            {tag}
+                          </span>
+                        ))}
+                    </div>
+                  </MetaRow>
+                )}
+
+                {/* Created */}
+                <MetaRow icon={<Calendar className="w-3.5 h-3.5" />} label="Creada el">
+                  <span className="text-xs">{fmtDate(workItem.createdDate)}</span>
+                </MetaRow>
+              </div>
+            </div>
+          </div>
+
+          {/* ── Comments section (full width, bottom) ── */}
+          <div className="p-7">
+            <div className="flex items-center justify-between mb-5">
+              <div className="flex items-center gap-2">
+                <div className="h-4 w-1 bg-primary/40 rounded-full" />
+                <h3 className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/70">
+                  Hilo de Actividad
+                </h3>
+                {!loadingComments && comments.length > 0 && (
+                  <span className="px-2 py-0.5 bg-primary/10 text-primary rounded-full text-[10px] font-black">
+                    {comments.length}
+                  </span>
+                )}
+              </div>
+            </div>
+
+            {/* Comment list */}
+            {loadingComments ? (
+              <div className="flex justify-center py-10">
+                <Loader2 className="w-6 h-6 animate-spin text-muted-foreground/30" />
+              </div>
+            ) : comments.length === 0 ? (
+              <div className="text-center py-10 bg-muted/5 rounded-2xl border border-dashed border-muted-foreground/10 mb-5">
+                <MessageSquare className="w-7 h-7 text-muted-foreground/20 mx-auto mb-2" />
+                <p className="text-[11px] font-bold text-muted-foreground/40 uppercase tracking-widest">Sin comentarios aún — sé el primero</p>
+              </div>
+            ) : (
+              <div
+                ref={commentsListRef}
+                className="space-y-4 max-h-[420px] overflow-y-auto pr-2 mb-5 custom-scrollbar"
+              >
+                {comments.map((comment, idx) => (
+                  <div key={comment.id} className="flex gap-3 group">
+                    {/* Avatar */}
+                    <div className="flex-shrink-0 flex flex-col items-center gap-1">
+                      {comment.createdBy?.imageUrl ? (
+                        <img
+                          src={comment.createdBy.imageUrl}
+                          alt={comment.createdBy.displayName}
+                          className="w-9 h-9 rounded-xl border border-border shadow-sm"
+                        />
+                      ) : (
+                        <div className="w-9 h-9 rounded-xl bg-primary/10 flex items-center justify-center text-xs font-black text-primary border border-primary/20">
+                          {comment.createdBy?.displayName?.charAt(0) ?? '?'}
                         </div>
-                      ))}
+                      )}
+                      {/* Timeline connector (skip last) */}
+                      {idx < comments.length - 1 && (
+                        <div className="w-px flex-1 min-h-[12px] bg-border" />
+                      )}
                     </div>
-                  ) : (
-                    <div className="text-center py-10 bg-muted/5 rounded-[2rem] border border-dashed border-muted-foreground/10">
-                      <MessageSquare className="w-8 h-8 text-muted-foreground/20 mx-auto mb-3" />
-                      <p className="text-[11px] font-bold text-muted-foreground/40 uppercase tracking-widest">Sin comentarios aún</p>
-                    </div>
-                  )}
-                  
-                  {/* Nueva área de comentario */}
-                  <div className="relative group">
-                    <textarea 
-                      placeholder="Deja una actualización o duda sobre esta tarea..." 
-                      className="w-full bg-muted/10 border border-muted-foreground/10 rounded-[2rem] p-6 text-xs focus:ring-4 focus:ring-primary/5 focus:bg-background outline-none min-h-[120px] transition-all resize-none shadow-inner"
-                    />
-                    <div className="flex justify-end mt-4">
-                      <Button className="h-11 px-8 rounded-xl font-black text-[11px] uppercase tracking-widest shadow-sm hover:shadow-primary/20 transition-all active:scale-95">
-                        Enviar Comentario
-                      </Button>
-                    </div>
-                  </div>
-                </div>
-              </section>
-            </div>
-
-            {/* Columna Lateral: Metadatos (4/12) */}
-            <div className="lg:col-span-4 space-y-8">
-              
-              {/* Tarjeta de Estado y Responsable */}
-              <div className="bg-muted/30 rounded-[2.5rem] p-8 border border-muted-foreground/5 space-y-8 shadow-sm">
-                <div>
-                  <label className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground/50 block mb-4">Estado del Work Item</label>
-                  <div 
-                    className="inline-flex px-5 py-2.5 rounded-xl text-[10px] font-black uppercase text-white shadow-lg ring-4 ring-offset-2 tracking-widest"
-                    style={{ backgroundColor: TASK_STATE_COLORS[workItem.state] }}
-                  >
-                    {workItem.state}
-                  </div>
-                </div>
-
-                <div className="pt-6 border-t border-muted-foreground/5">
-                  <label className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground/50 block mb-4">Responsable Actual</label>
-                  <div className="flex items-center gap-4 bg-background p-3 rounded-2xl border border-muted-foreground/5">
-                    <div className="w-10 h-10 rounded-xl bg-muted/20 flex items-center justify-center border border-border shadow-inner">
-                      <User className="w-5 h-5 text-muted-foreground" />
-                    </div>
-                    <div className="flex flex-col min-w-0">
-                      <span className="text-xs font-black truncate text-foreground/90 tracking-tight">
-                        {workItem.assignedToName || 'Sin asignar'}
-                      </span>
-                      <span className="text-[10px] text-muted-foreground font-medium truncate opacity-60">
-                        {workItem.assignedTo || 'Colaborador Invitado'}
-                      </span>
+                    {/* Bubble */}
+                    <div className="flex-1 pb-1">
+                      <div className="bg-muted/20 rounded-2xl rounded-tl-sm p-4 border border-transparent group-hover:border-muted-foreground/8 group-hover:bg-muted/30 transition-all">
+                        <div className="flex items-center justify-between mb-2 gap-2 flex-wrap">
+                          <span className="text-sm font-black text-foreground/90">
+                            {comment.createdBy?.displayName}
+                          </span>
+                          <span className="text-[10px] text-muted-foreground font-bold uppercase tracking-wide flex-shrink-0">
+                            {new Date(comment.createdDate).toLocaleString('es', {
+                              day: '2-digit', month: 'short', year: 'numeric',
+                              hour: '2-digit', minute: '2-digit',
+                            })}
+                          </span>
+                        </div>
+                        <div
+                          className="tiptap-content text-sm text-foreground/75 leading-relaxed"
+                          dangerouslySetInnerHTML={{ __html: comment.text }}
+                        />
+                      </div>
                     </div>
                   </div>
-                </div>
+                ))}
               </div>
+            )}
 
-              {/* Tarjeta de Planificación */}
-              <div className="bg-muted/10 rounded-[2.5rem] p-8 border border-muted-foreground/5 space-y-6">
-                <label className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground/50 block mb-2">Cronograma</label>
-                
-                <div className="flex items-center gap-4 group">
-                  <div className="w-10 h-10 rounded-xl bg-background flex items-center justify-center border border-border shadow-sm group-hover:text-primary transition-colors">
-                    <Calendar className="w-4 h-4" />
-                  </div>
-                  <div className="flex flex-col">
-                    <span className="text-[9px] text-muted-foreground font-black uppercase tracking-widest">Fecha de Inicio</span>
-                    <span className="text-xs font-black text-foreground/80 tracking-tight">{workItem.fechaInicio ? new Date(workItem.fechaInicio).toLocaleDateString() : '--/--/--'}</span>
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-4 group">
-                  <div className="w-10 h-10 rounded-xl bg-background flex items-center justify-center border border-border shadow-sm group-hover:text-primary transition-colors">
-                    <Calendar className="w-4 h-4" />
-                  </div>
-                  <div className="flex flex-col">
-                    <span className="text-[9px] text-muted-foreground font-black uppercase tracking-widest">Fecha de Entrega</span>
-                    <span className="text-xs font-black text-foreground/80 tracking-tight">{workItem.fechaFin ? new Date(workItem.fechaFin).toLocaleDateString() : '--/--/--'}</span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Etiquetas */}
-              <div className="px-4 space-y-4">
-                <label className="text-[10px] font-black uppercase tracking-[0.3em] text-muted-foreground/50 flex items-center gap-2">
-                  <Tag className="w-4 h-4" /> Categorías / Tags
-                </label>
-                <div className="flex flex-wrap gap-2">
-                  {workItem.tags.length > 0 ? (
-                    workItem.tags.map((tag) => (
-                      <span key={tag} className="px-3 py-1.5 bg-primary/5 text-primary border border-primary/20 rounded-xl text-[10px] font-black uppercase tracking-tighter hover:bg-primary/10 transition-all cursor-default">
-                        {tag}
-                      </span>
-                    ))
-                  ) : (
-                    <span className="text-[11px] font-bold text-muted-foreground/30 italic">Sin etiquetas registradas</span>
-                  )}
-                </div>
-              </div>
-            </div>
+            {/* Rich text editor */}
+            <RichTextEditor
+              onSubmit={(html) => createComment.mutate(html)}
+              isSubmitting={createComment.isPending}
+            />
+            {createComment.isError && (
+              <p className="text-xs text-destructive mt-2">Error al enviar el comentario. Intenta de nuevo.</p>
+            )}
           </div>
         </div>
 
-        {/* Footer Pro */}
-        <div className="px-10 py-6 border-t border-border flex justify-between items-center bg-muted/30">
-          <div className="flex items-center gap-3">
-            <Clock className="w-4 h-4 text-muted-foreground opacity-50" />
-            <span className="text-[10px] text-muted-foreground font-black uppercase tracking-[0.2em]">
-              Último Cambio: <span className="text-foreground/70">{new Date(workItem.changedDate).toLocaleString()}</span>
-            </span>
+        {/* ── Footer ── */}
+        <div className="px-7 py-4 border-t border-border flex justify-between items-center bg-muted/20 flex-shrink-0">
+          <div className="flex items-center gap-3 text-[10px] text-muted-foreground font-bold uppercase tracking-widest">
+            <Clock className="w-3.5 h-3.5 opacity-50" />
+            Último cambio: <span className="text-foreground/60">{new Date(workItem.changedDate).toLocaleString('es', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>
           </div>
-          <div className="flex gap-4">
+          <div className="flex gap-3">
             <Button
               variant="outline"
               onClick={onClose}
-              className="h-11 px-8 rounded-xl font-black text-[11px] uppercase tracking-widest border-muted-foreground/15 hover:bg-muted/50 transition-all active:scale-95"
+              className="h-9 px-5 rounded-xl font-black text-[11px] uppercase tracking-widest"
             >
               Cerrar
             </Button>
-            <Button className="h-11 px-8 rounded-xl font-black text-[11px] uppercase tracking-widest bg-slate-900 text-white shadow-lg shadow-slate-900/30 hover:shadow-slate-900/50 transition-all active:scale-95 border-none">
+            <a
+              href={adoUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="h-9 px-5 rounded-xl font-black text-[11px] uppercase tracking-widest bg-slate-800 text-white hover:bg-slate-700 transition-colors flex items-center gap-2"
+            >
+              <ExternalLink className="w-3.5 h-3.5" />
               Abrir en ADO
-            </Button>
+            </a>
           </div>
         </div>
       </DialogContent>
