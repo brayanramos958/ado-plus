@@ -5,7 +5,7 @@ import { TimeConfirmDialog } from './TimeConfirmDialog'
 import { useUpdateWorkItem } from '../hooks/useWorkItems'
 import { useBoardStore } from '../store/boardStore'
 import { TASK_STATES, BUG_STATES, PRIORITY_COLORS, PRIORITY_LABELS, type WorkItemUI, type WorkItemState } from '../types'
-import { ChevronLeft, ChevronRight, Loader2, Clock, Pencil, GripHorizontal } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Loader2, Clock, Pencil, GripVertical } from 'lucide-react'
 
 interface WorkItemCardProps {
   workItem: WorkItemUI
@@ -83,7 +83,6 @@ export function WorkItemCard({ workItem, onClick, draggable }: WorkItemCardProps
     setPendingChange(null)
   }
 
-  // Show only first name to save horizontal space in narrow columns
   const shortName = assigneeName.split(' ')[0]
 
   return (
@@ -92,7 +91,6 @@ export function WorkItemCard({ workItem, onClick, draggable }: WorkItemCardProps
       onClick={onClick}
       draggable={draggable}
       onDragStart={draggable ? (e) => {
-        // Only allow drag when the dedicated handle was pressed
         if (!isDragHandleActive.current) {
           e.preventDefault()
           return
@@ -109,12 +107,19 @@ export function WorkItemCard({ workItem, onClick, draggable }: WorkItemCardProps
         hover:border-primary/50 hover:shadow-sm
         ${isDragging ? 'opacity-40 scale-[0.97]' : ''}`}
     >
-      {/* Card body */}
       <div className="p-2.5">
 
-        {/* Header: prioridad + ID + edit | effort + type */}
-        <div className="flex items-center justify-between mb-2 gap-1 min-w-0">
+        {/* Header — zona de drag completa (excepto el botón de editar) */}
+        <div
+          className={`flex items-center justify-between mb-2 gap-1 min-w-0 rounded-md -mx-1 px-1 py-0.5
+            ${draggable ? 'cursor-grab hover:bg-muted/40 transition-colors' : ''}`}
+          onMouseDown={draggable ? (e) => { isDragHandleActive.current = true } : undefined}
+          onMouseUp={draggable ? () => { isDragHandleActive.current = false } : undefined}
+        >
           <div className="flex items-center gap-1.5 min-w-0 overflow-hidden">
+            {draggable && (
+              <GripVertical className="w-3 h-3 flex-shrink-0 text-muted-foreground/30" />
+            )}
             {workItem.priority != null && (
               <span
                 className="w-2 h-2 rounded-full flex-shrink-0"
@@ -128,10 +133,13 @@ export function WorkItemCard({ workItem, onClick, draggable }: WorkItemCardProps
           </div>
 
           <div className="flex items-center gap-1 flex-shrink-0">
-            {/* Edit button — visible border, bigger touch target */}
+            {/* Edit — frena mousedown para no activar drag al hacer click aquí */}
             <button
+              onMouseDown={(e) => e.stopPropagation()}
               onClick={(e) => { e.stopPropagation(); setEditingWorkItemId(workItem.id) }}
-              className="flex items-center justify-center w-6 h-6 rounded-md border border-border/60 text-muted-foreground hover:text-primary hover:bg-primary/10 hover:border-primary/30 transition-all"
+              className="flex items-center justify-center w-6 h-6 rounded-md border border-border/60
+                         text-muted-foreground hover:text-primary hover:bg-primary/10
+                         hover:border-primary/30 transition-all cursor-pointer"
               title="Edición rápida"
             >
               <Pencil className="w-3.5 h-3.5" />
@@ -222,24 +230,6 @@ export function WorkItemCard({ workItem, onClick, draggable }: WorkItemCardProps
           </div>
         )}
       </div>
-
-      {/* Drag handle — franja exclusiva al fondo de la card */}
-      {draggable && (
-        <div
-          onMouseDown={(e) => {
-            e.stopPropagation()
-            isDragHandleActive.current = true
-          }}
-          onMouseUp={() => { isDragHandleActive.current = false }}
-          className="border-t border-dashed border-border/50 px-3 py-1 rounded-b-lg
-                     flex items-center justify-center
-                     text-muted-foreground/30 hover:text-muted-foreground/60
-                     hover:bg-muted/40 transition-colors cursor-grab"
-          title="Arrastrar para cambiar estado"
-        >
-          <GripHorizontal className="w-3.5 h-3.5" />
-        </div>
-      )}
     </div>
 
     {pendingChange && (
@@ -250,6 +240,7 @@ export function WorkItemCard({ workItem, onClick, draggable }: WorkItemCardProps
         newState={pendingChange.newState}
         onConfirm={handleConfirmTime}
         onSkip={handleSkipTime}
+        onCancel={() => setPendingChange(null)}
       />
     )}
     </>

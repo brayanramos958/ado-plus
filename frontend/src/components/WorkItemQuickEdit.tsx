@@ -187,7 +187,7 @@ export function WorkItemQuickEdit({ workItem, isOpen, onClose }: WorkItemQuickEd
         className="max-w-5xl w-[95vw] max-h-[90vh] p-0 gap-0 overflow-hidden rounded-2xl border-none shadow-2xl flex flex-col"
       >
         {/* Header */}
-        <div className={`px-6 py-4 flex items-center gap-4 bg-gradient-to-r transition-all duration-700 ${workItem.type === 'Bug' ? 'from-red-600 to-red-700' : 'from-primary/80 to-primary'}`}>
+        <div className={`px-6 py-4 flex items-center gap-4 bg-gradient-to-r transition-all duration-700 ${workItem.type === 'Bug' ? 'from-red-600 to-red-700' : 'from-blue-600 to-blue-700'}`}>
           <div className="w-9 h-9 bg-white/20 rounded-xl flex items-center justify-center flex-shrink-0 border border-white/10">
             <Edit2 className="w-5 h-5 text-white" />
           </div>

@@ -173,8 +173,8 @@ function UserSelectionGrid({ workItems, onSelectUser }: UserSelectionGridProps) 
           >
             {/* User Info */}
             <div className="flex items-center gap-3 mb-4">
-              <div className={`w-12 h-12 rounded-full flex items-center justify-center text-white text-lg font-bold
-                ${user.email ? 'bg-primary' : 'bg-muted-foreground'}`}
+              <div className={`w-12 h-12 rounded-full flex items-center justify-center text-slate-700 text-lg font-bold
+                ${user.email ? 'bg-slate-200' : 'bg-slate-300'}`}
               >
                 {user.email ? getInitials(user.name) : '?'}
               </div>
@@ -340,8 +340,8 @@ function SprintBoardTable({ workItems, onWorkItemClick }: SprintBoardTableProps)
             {/* Usuario - sticky left */}
             <div className="sticky left-0 z-20 w-48 flex-shrink-0 p-3 flex items-center gap-2 bg-background border-r border-border/50 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)]">
               <div
-                className={`w-8 h-8 rounded-full flex items-center justify-center text-white text-sm font-medium flex-shrink-0
-                  ${assignee.email ? 'bg-primary' : 'bg-muted-foreground'}`}
+                className={`w-8 h-8 rounded-full flex items-center justify-center text-slate-700 text-sm font-medium flex-shrink-0
+                  ${assignee.email ? 'bg-slate-200' : 'bg-slate-300'}`}
               >
                 {assignee.email ? getInitials(assignee.name) : '?'}
               </div>
@@ -449,6 +449,7 @@ function SprintBoardTable({ workItems, onWorkItemClick }: SprintBoardTableProps)
           updateMutation.mutate({ id: timeConfirm.workItem.id, patches: timeConfirm.basePatches })
           setTimeConfirm(null)
         }}
+        onCancel={() => setTimeConfirm(null)}
       />
     )}
     </>

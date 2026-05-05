@@ -44,19 +44,19 @@ export const WORKITEM_TYPE_COLORS: Record<WorkItemType, string> = {
   Issue: '#7C3AED', // Púrpura
 }
 
-// Prioridad — 4 niveles (1 = crítica, 4 = baja)
+// Prioridad — 4 niveles (1 = baja, 4 = crítica)
 export const PRIORITY_COLORS: Record<number, string> = {
-  1: '#DC2626',  // Crítica — rojo
-  2: '#F97316',  // Alta — naranja
-  3: '#FBBF24',  // Media — amarillo
-  4: '#6B7280',  // Baja — gris
+  1: '#6B7280',  // Baja — gris
+  2: '#FBBF24',  // Media — amarillo
+  3: '#F97316',  // Alta — naranja
+  4: '#DC2626',  // Crítica — rojo
 }
 
 export const PRIORITY_LABELS: Record<number, string> = {
-  1: 'Crítica',
-  2: 'Alta',
-  3: 'Media',
-  4: 'Baja',
+  1: 'Baja',
+  2: 'Media',
+  3: 'Alta',
+  4: 'Crítica',
 }
 
 // Mapeo de color por estado (Task)

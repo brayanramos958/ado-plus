@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
-import { Clock, CheckCircle2 } from 'lucide-react'
+import { Clock, CheckCircle2, X } from 'lucide-react'
 import { TASK_STATE_COLORS, type WorkItemState } from '../types'
 
 interface TimeConfirmDialogProps {
@@ -11,6 +11,7 @@ interface TimeConfirmDialogProps {
   newState: WorkItemState
   onConfirm: (hours: number) => void
   onSkip: () => void
+  onCancel: () => void
 }
 
 export function TimeConfirmDialog({
@@ -20,6 +21,7 @@ export function TimeConfirmDialog({
   newState,
   onConfirm,
   onSkip,
+  onCancel,
 }: TimeConfirmDialogProps) {
   const [hours, setHours] = useState<string>(String(estimatedHours ?? 0))
 
@@ -33,7 +35,7 @@ export function TimeConfirmDialog({
   }
 
   return (
-    <Dialog open={isOpen} onOpenChange={(open) => !open && onSkip()} disablePointerDismissal>
+    <Dialog open={isOpen} onOpenChange={(open) => !open && onCancel()} disablePointerDismissal>
       <DialogContent
         showCloseButton={false}
         className="max-w-sm w-[95vw] p-0 rounded-2xl overflow-hidden border-none shadow-2xl gap-0"
@@ -43,7 +45,7 @@ export function TimeConfirmDialog({
           <div className="w-10 h-10 bg-white/10 rounded-xl flex items-center justify-center flex-shrink-0 border border-white/10">
             <Clock className="w-5 h-5 text-white" />
           </div>
-          <div>
+          <div className="flex-1 min-w-0">
             <DialogTitle className="text-base font-black text-white leading-tight">
               ¿En esta tarea sí te demoraste?
             </DialogTitle>
@@ -51,6 +53,15 @@ export function TimeConfirmDialog({
               Registro de horas reales
             </p>
           </div>
+          {/* Cancel — cierra el modal SIN actualizar nada */}
+          <button
+            type="button"
+            onClick={onCancel}
+            title="Cancelar — la tarea NO cambia de estado"
+            className="group flex-shrink-0 w-8 h-8 rounded-lg bg-white/10 hover:bg-white/20 border border-white/10 hover:border-white/25 flex items-center justify-center transition-all"
+          >
+            <X className="w-4 h-4 text-white/70 group-hover:rotate-90 transition-transform duration-300" />
+          </button>
         </div>
 
         {/* Body */}
