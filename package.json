@@ -1,15 +1,14 @@
 {
   "name": "ado-plus",
   "private": true,
-  "workspaces": [
-    "backend",
-    "frontend"
-  ],
+  "packageManager": "pnpm@10.33.3",
   "scripts": {
-    "dev": "concurrently --names \"BACK,FRONT\" --prefix-colors \"cyan,magenta\" \"npm run dev --workspace=backend\" \"npm run dev --workspace=frontend\"",
-    "install:all": "npm install"
+    "dev": "concurrently --names \"BACK,FRONT\" --prefix-colors \"cyan,magenta\" \"pnpm --filter ./backend dev\" \"pnpm --filter ./frontend dev\""
   },
   "devDependencies": {
     "concurrently": "^9.2.1"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": ["esbuild"]
   }
 }

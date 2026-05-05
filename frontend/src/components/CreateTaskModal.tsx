@@ -198,7 +198,7 @@ export function CreateTaskModal({ isOpen, onClose, defaultSprintPath, defaultAss
   const { data: features } = useFeaturesByEpic(epicId)
   const { data: members } = useMembers()
   const { data: iterations } = useIterations()
-  const { data: availableTags } = useTags()
+  const { data: availableTags, isLoading: loadingTags, isError: tagsError } = useTags()
   const createMutation = useCreateWorkItem()
 
   const availableStates = type === 'Task' ? TASK_CREATE_STATES : BUG_CREATE_STATES
@@ -302,7 +302,7 @@ export function CreateTaskModal({ isOpen, onClose, defaultSprintPath, defaultAss
     '—'
 
   const filteredTags = (availableTags?.value ?? []).filter(
-    (t) => t.active && t.name.toLowerCase().includes(tagSearch.toLowerCase())
+    (t) => t.name.toLowerCase().includes(tagSearch.toLowerCase())
   )
 
   return (
@@ -469,7 +469,15 @@ export function CreateTaskModal({ isOpen, onClose, defaultSprintPath, defaultAss
                           )}
                         </div>
                         <div className="max-h-40 overflow-y-auto py-1">
-                          {filteredTags.length === 0 ? (
+                          {loadingTags ? (
+                            <p className="text-[10px] text-muted-foreground/40 text-center py-3 flex items-center justify-center gap-1.5">
+                              <Loader2 className="w-3 h-3 animate-spin" /> Cargando etiquetas...
+                            </p>
+                          ) : tagsError ? (
+                            <p className="text-[10px] text-destructive/70 text-center py-3">
+                              Error al cargar etiquetas
+                            </p>
+                          ) : filteredTags.length === 0 ? (
                             <p className="text-[10px] text-muted-foreground/40 text-center py-3">
                               {tagSearch ? `Sin resultados para "${tagSearch}"` : 'Sin etiquetas disponibles'}
                             </p>

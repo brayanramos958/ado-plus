@@ -1,4 +1,3 @@
-// Header — barra superior de la aplicación
 import { useState } from 'react'
 import { useHealth, useMembers } from '../hooks/useWorkItems'
 import { useBoardStore } from '../store/boardStore'

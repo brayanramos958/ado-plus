@@ -1,4 +1,3 @@
-// Spinner — indicador de carga
 interface SpinnerProps {
   size?: 'sm' | 'md' | 'lg'
   className?: string

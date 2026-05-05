@@ -1,4 +1,3 @@
-// FilterBar — barra de filtros del board
 import { useBoardStore } from '../store/boardStore'
 import { useIterations, useMembers } from '../hooks/useWorkItems'
 

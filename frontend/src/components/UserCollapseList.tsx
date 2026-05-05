@@ -1,6 +1,3 @@
-// UserCollapseList — lista collapsible de tareas por usuario
-// Cada usuario es un collapsible que muestra sus tareas
-
 import { useState } from 'react'
 import { WorkItemCard } from './WorkItemCard'
 import type { WorkItemUI } from '../types'

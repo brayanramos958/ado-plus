@@ -1,9 +1,3 @@
-// Tipos para Azure DevOps — basados en la API REST v7.0
-
-// ============================================
-// Work Item Types
-// ============================================
-
 export type WorkItemType = 'Task' | 'Bug' | 'Epic' | 'Feature' | 'Issue'
 
 export type WorkItemState =
@@ -18,7 +12,6 @@ export type WorkItemState =
   | 'Resolved'
   | 'Closed'
 
-// Estados por tipo de work item
 export const TASK_STATES: WorkItemState[] = [
   'Por Hacer',
   'Planeado',
@@ -35,21 +28,20 @@ export const BUG_STATES: WorkItemState[] = [
   'Closed',
 ]
 
-// Mapeo de color por tipo
 export const WORKITEM_TYPE_COLORS: Record<WorkItemType, string> = {
-  Task: '#8B4513',    // Marrón
-  Bug: '#DC2626',      // Rojo
-  Epic: '#EA580C',     // Naranja
-  Feature: '#7C3AED', // Púrpura
-  Issue: '#7C3AED', // Púrpura
+  Task: '#8B4513',
+  Bug: '#DC2626',
+  Epic: '#EA580C',
+  Feature: '#7C3AED',
+  Issue: '#7C3AED',
 }
 
-// Prioridad — 4 niveles (1 = baja, 4 = crítica)
+// 1 = low → 4 = critical (this team's ADO convention — reversed from standard)
 export const PRIORITY_COLORS: Record<number, string> = {
-  1: '#6B7280',  // Baja — gris
-  2: '#FBBF24',  // Media — amarillo
-  3: '#F97316',  // Alta — naranja
-  4: '#DC2626',  // Crítica — rojo
+  1: '#6B7280',
+  2: '#FBBF24',
+  3: '#F97316',
+  4: '#DC2626',
 }
 
 export const PRIORITY_LABELS: Record<number, string> = {
@@ -59,28 +51,23 @@ export const PRIORITY_LABELS: Record<number, string> = {
   4: 'Crítica',
 }
 
-// Mapeo de color por estado (Task)
 export const TASK_STATE_COLORS: Record<WorkItemState, string> = {
-  'Por Hacer': '#9CA3AF',  // Gris claro
-  'Planeado': '#FBBF24',    // Amarillo
-  'En proceso': '#3B82F6', // Azul
-  'Bloqueado': '#EF4444',   // Rojo
-  'Resuelto': '#F97316',   // Naranja
-  'Cerrado': '#22C55E',    // Verde
+  'Por Hacer': '#9CA3AF',
+  'Planeado': '#FBBF24',
+  'En proceso': '#3B82F6',
+  'Bloqueado': '#EF4444',
+  'Resuelto': '#F97316',
+  'Cerrado': '#22C55E',
   'New': '#6B7280',
   'Active': '#3B82F6',
   'Resolved': '#F97316',
   'Closed': '#22C55E',
 }
 
-// ============================================
-// Work Item (respuesta de ADO)
-// ============================================
-
-// Estructura que devuelve ADO para campos de identidad (AssignedTo, CreatedBy, etc.)
+// ADO returns an identity object for AssignedTo, CreatedBy, etc. — NOT a plain string
 export interface ADOIdentity {
   displayName: string
-  uniqueName: string  // es el email
+  uniqueName: string  // email address
   imageUrl: string
 }
 
@@ -89,7 +76,7 @@ export interface WorkItemField {
   'System.Title': string
   'System.State': WorkItemState
   'System.WorkItemType': WorkItemType
-  'System.AssignedTo': ADOIdentity | null  // objeto identidad, NO string
+  'System.AssignedTo': ADOIdentity | null  // identity object, NOT a string
   'System.IterationPath': string
   'System.Tags': string
   'System.CreatedDate': string
@@ -109,16 +96,15 @@ export interface WorkItem {
   url: string
 }
 
-// Work item con parsed fields para UI
 export interface WorkItemUI {
   id: number
   title: string
   type: WorkItemType
   state: WorkItemState
   iterationPath: string
-  assignedTo: string | null        // email (extraído de ADOIdentity.uniqueName)
-  assignedToName: string | null    // nombre para mostrar
-  tags: string[] // parsed from System.Tags
+  assignedTo: string | null        // email from ADOIdentity.uniqueName
+  assignedToName: string | null
+  tags: string[]                   // parsed from System.Tags (semicolon-separated)
   createdDate: string
   changedDate: string
   createdBy: string
@@ -127,15 +113,12 @@ export interface WorkItemUI {
   fechaInicio?: string
   fechaFin?: string
   tipoHistoriaTecnica?: string
-  // Effort / puntos de esfuerzo (= horas estimadas)
-  effortPoints?: number
+  effortPoints?: number            // estimated hours
   effortField?: 'Microsoft.VSTS.Scheduling.Effort'
   completedWork?: number
-  // Prioridad (1-4)
   priority?: number
 }
 
-// Parse assignee from tags (multi-asignado)
 export interface Assignees {
   primary: string | null
   additional: string[]
@@ -162,7 +145,7 @@ export interface IterationResponse {
 }
 
 // ============================================
-// Member / Equipo
+// Member / Team
 // ============================================
 
 export interface Member {

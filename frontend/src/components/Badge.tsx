@@ -1,4 +1,3 @@
-// Badge — etiqueta de tipo o estado
 interface BadgeProps {
   text: string
   color?: string
@@ -27,7 +26,6 @@ export function Badge({ text, color = 'bg-secondary text-secondary-foreground', 
   )
 }
 
-// Tipo de Work Item Badge
 export function TypeBadge({ type }: { type: string }) {
   const colors: Record<string, string> = {
     Task: 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300',
@@ -40,7 +38,6 @@ export function TypeBadge({ type }: { type: string }) {
   return <Badge text={type} color={colors[type] || 'bg-secondary text-secondary-foreground'} />
 }
 
-// Estado Badge (para Tasks)
 export function StateBadge({ state }: { state: string }) {
   const colors: Record<string, string> = {
     'Por Hacer': 'bg-secondary text-secondary-foreground',

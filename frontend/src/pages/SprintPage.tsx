@@ -1,4 +1,3 @@
-// SprintPage — página principal del sprint
 import { useEffect } from 'react'
 import { useBoardStore } from '../store/boardStore'
 import { useCurrentSprint, useIterations, useSprintWorkItems, useMembers } from '../hooks/useWorkItems'

@@ -1,7 +1,3 @@
-// SprintBoard — vista del sprint por usuario (swimlanes)
-// Filas horizontales = usuarios
-// Columnas = estados (Por Hacer, Planeado, En proceso, Bloqueado, Resuelto, Cerrado)
-
 import { useState, useEffect } from 'react'
 import { useBoardStore } from '../store/boardStore'
 import { useSprintWorkItems, useUpdateWorkItem } from '../hooks/useWorkItems'
@@ -121,7 +117,7 @@ export function SprintBoard({ sprintPath, onWorkItemClick }: SprintBoardProps) {
 }
 
 // ============================================
-// UserSelectionGrid — Grid de tarjetas de usuario
+// UserSelectionGrid
 // ============================================
 
 interface UserSelectionGridProps {
@@ -215,7 +211,7 @@ function UserSelectionGrid({ workItems, onSelectUser }: UserSelectionGridProps) 
 }
 
 // ============================================
-// SprintBoardTable — tabla por usuario
+// SprintBoardTable
 // ============================================
 
 interface SprintBoardTableProps {

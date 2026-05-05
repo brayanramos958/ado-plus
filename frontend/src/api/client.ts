@@ -1,6 +1,3 @@
-// API client — wrapper around fetch
-// point to Vite proxy → backend
-
 const API_BASE = '/api'
 
 async function request<T>(
@@ -58,7 +55,7 @@ export function getIterations() {
 }
 
 // ============================================
-// Members / Equipo
+// Members / Team
 // ============================================
 
 export interface Member {
@@ -133,7 +130,7 @@ export interface WorkItemsFilter {
 export function queryWorkItems(filter: WorkItemsFilter) {
   const { sprintPath } = filter
 
-  // WIQL query - usar el path exacto del sprint
+  // Sprint path must be exact (e.g. "Team\Q2 2026") — UNDER operator also matches sub-iterations
   const wiql = {
     query: `
       SELECT [System.Id]
@@ -198,7 +195,7 @@ export function getWorkItemComments(id: number) {
 }
 
 // ============================================
-// Epics y Features (jerarquía)
+// Epics & Features (hierarchy)
 // ============================================
 
 export interface WorkItemRef {

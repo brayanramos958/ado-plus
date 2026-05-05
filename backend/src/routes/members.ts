@@ -27,7 +27,8 @@ router.get('/', async (_req, res) => {
 
 
 router.get('/wit/tags', async (_req, res) => {
-  const { status, data } = await adoFetch(`/${config.ADO_PROJECT}/_apis/wit/tags`)
+  // tags API requires a preview version not covered by the global api-version=7.0
+  const { status, data } = await adoFetch(`/${config.ADO_PROJECT}/_apis/wit/tags?api-version=7.1-preview.1`)
   res.status(status).json(data)
 })
 
