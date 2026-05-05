@@ -306,7 +306,7 @@ export function CreateTaskModal({ isOpen, onClose, defaultSprintPath, defaultAss
   )
 
   return (
-    <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
+    <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()} disablePointerDismissal>
       <DialogContent showCloseButton={false} className="max-w-5xl w-[95vw] max-h-[90vh] p-0 gap-0 overflow-hidden rounded-2xl border-none shadow-2xl flex flex-col">
 
         {/* Header */}

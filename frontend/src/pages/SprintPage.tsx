@@ -48,19 +48,50 @@ export function SprintPage() {
       {selectedSprint && (
         <>
           {/* Sprint Info */}
-          <div className="bg-blue-50 dark:bg-blue-900/20 border-b border-border px-4 py-2">
-            <div className="flex items-center gap-4 flex-wrap">
-              <div>
-                <span className="text-xs font-medium text-blue-500 dark:text-blue-400 uppercase">
-                  {selectedSprint.attributes.timeFrame === 'current' ? 'Sprint Actual' : 'Sprint Seleccionado'}
-                </span>
-                <h2 className="text-lg font-semibold text-blue-900 dark:text-blue-100">{selectedSprint.name}</h2>
+          <div className="border-b border-blue-100 dark:border-blue-900/40 bg-gradient-to-r from-transparent via-blue-50/80 to-transparent dark:from-transparent dark:via-blue-950/40 dark:to-transparent px-4 py-2.5">
+            <div className="flex items-center justify-center gap-3 sm:gap-5 flex-wrap">
+
+              {/* Badge + nombre */}
+              <div className="flex items-center gap-2">
+                {selectedSprint.attributes.timeFrame === 'current' && (
+                  <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-blue-500 text-white text-[10px] font-bold uppercase tracking-widest shadow-sm">
+                    <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
+                    Actual
+                  </span>
+                )}
+                <h2 className="text-sm font-semibold text-blue-900 dark:text-blue-100 tracking-tight">
+                  {selectedSprint.name}
+                </h2>
               </div>
-              <div className="text-xs text-blue-400 dark:text-blue-500">
-                {new Date(selectedSprint.attributes.startDate).toLocaleDateString('es', { day: '2-digit', month: 'short' })}
-                {' → '}
-                {new Date(selectedSprint.attributes.finishDate).toLocaleDateString('es', { day: '2-digit', month: 'short', year: 'numeric' })}
+
+              {/* Separador */}
+              <div className="hidden sm:block w-px h-5 bg-blue-200 dark:bg-blue-800" />
+
+              {/* Fechas */}
+              <div className="flex items-center gap-2 text-xs">
+                <div className="flex items-center gap-1.5 bg-white/70 dark:bg-blue-950/60 border border-blue-100 dark:border-blue-800/60 rounded-md px-2.5 py-1 shadow-sm">
+                  <svg className="w-3 h-3 text-blue-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                  </svg>
+                  <span className="font-medium text-blue-700 dark:text-blue-300">
+                    {new Date(selectedSprint.attributes.startDate).toLocaleDateString('es', { day: '2-digit', month: 'short', year: 'numeric' })}
+                  </span>
+                </div>
+
+                <svg className="w-3.5 h-3.5 text-blue-300 dark:text-blue-600 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
+                </svg>
+
+                <div className="flex items-center gap-1.5 bg-white/70 dark:bg-blue-950/60 border border-blue-100 dark:border-blue-800/60 rounded-md px-2.5 py-1 shadow-sm">
+                  <svg className="w-3 h-3 text-blue-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                  </svg>
+                  <span className="font-medium text-blue-700 dark:text-blue-300">
+                    {new Date(selectedSprint.attributes.finishDate).toLocaleDateString('es', { day: '2-digit', month: 'short', year: 'numeric' })}
+                  </span>
+                </div>
               </div>
+
             </div>
           </div>
 

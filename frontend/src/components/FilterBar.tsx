@@ -30,7 +30,7 @@ export function FilterBar() {
           <option value="">Seleccionar sprint...</option>
           {iterations?.value?.map((iteration) => (
             <option key={iteration.id} value={iteration.path}>
-              {iteration.name}
+              {iteration.name}{iteration.attributes?.timeFrame === 'current' ? ' · Actual' : ''}
             </option>
           ))}
         </select>

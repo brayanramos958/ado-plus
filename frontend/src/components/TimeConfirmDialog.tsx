@@ -33,7 +33,7 @@ export function TimeConfirmDialog({
   }
 
   return (
-    <Dialog open={isOpen} onOpenChange={(open) => !open && onSkip()}>
+    <Dialog open={isOpen} onOpenChange={(open) => !open && onSkip()} disablePointerDismissal>
       <DialogContent
         showCloseButton={false}
         className="max-w-sm w-[95vw] p-0 rounded-2xl overflow-hidden border-none shadow-2xl gap-0"
