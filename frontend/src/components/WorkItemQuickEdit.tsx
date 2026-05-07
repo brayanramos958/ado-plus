@@ -13,9 +13,9 @@ import {
 import { Input } from '@/components/ui/input'
 import {
   Loader2, Clock, Calendar, AlertCircle, Edit2,
-  User, ChevronDown, Search, X, Tag, Layout, MessageSquare,
+  User, ChevronDown, Search, X, Tag, Layout, MessageSquare, Target, Box,
 } from 'lucide-react'
-import { useUpdateWorkItem, useMembers, useIterations, useTags } from '../hooks/useWorkItems'
+import { useUpdateWorkItem, useMembers, useIterations, useTags, useEpics, useFeaturesByEpic, useWorkItemHierarchy } from '../hooks/useWorkItems'
 import { RichTextEditor } from './RichTextEditor'
 import {
   TASK_STATES, BUG_STATES, PRIORITY_COLORS, PRIORITY_LABELS,
@@ -56,6 +56,11 @@ export function WorkItemQuickEdit({ workItem, isOpen, onClose }: WorkItemQuickEd
   const [effortPoints, setEffortPoints] = useState('')
   const [completedWork, setCompletedWork] = useState('')
   const [priority, setPriority] = useState<number | null>(null)
+  const [epicId, setEpicId] = useState<number | null>(null)
+  const [epicName, setEpicName] = useState<string | null>(null)
+  const [featureId, setFeatureId] = useState<number | null>(null)
+  const [featureName, setFeatureName] = useState<string | null>(null)
+  const [originalFeatureId, setOriginalFeatureId] = useState<number | null>(null)
 
   const tagDropdownRef = useRef<HTMLDivElement>(null)
   const updateMutation = useUpdateWorkItem()
@@ -63,6 +68,9 @@ export function WorkItemQuickEdit({ workItem, isOpen, onClose }: WorkItemQuickEd
   const { data: members } = useMembers()
   const { data: iterations } = useIterations()
   const { data: availableTags, isLoading: loadingTags, isError: tagsError } = useTags()
+  const { data: hierarchy } = useWorkItemHierarchy(isOpen ? workItem?.id ?? null : null)
+  const { data: epics } = useEpics()
+  const { data: features } = useFeaturesByEpic(epicId)
 
   const { data: fullItem, isLoading: loadingDescription } = useQuery({
     queryKey: ['workitem-full', workItem?.id],
@@ -90,8 +98,25 @@ export function WorkItemQuickEdit({ workItem, isOpen, onClose }: WorkItemQuickEd
       setTagDropdownOpen(false)
       setTagSearch('')
       setOpenCount((c) => c + 1)
+      // Reset epic/feature until hierarchy loads
+      setEpicId(null)
+      setFeatureId(null)
+      setOriginalFeatureId(null)
     }
   }, [isOpen, workItem])
+
+  // Initialize epic/feature from hierarchy once it loads
+  useEffect(() => {
+    if (isOpen && hierarchy) {
+      const fid = hierarchy.feature?.id ?? null
+      const eid = hierarchy.epic?.id ?? null
+      setFeatureId(fid)
+      setFeatureName(hierarchy.feature?.fields['System.Title'] ?? null)
+      setEpicId(eid)
+      setEpicName(hierarchy.epic?.fields['System.Title'] ?? null)
+      setOriginalFeatureId(fid)
+    }
+  }, [isOpen, hierarchy])
 
   useEffect(() => {
     const handler = (e: MouseEvent) => {
@@ -146,16 +171,13 @@ export function WorkItemQuickEdit({ workItem, isOpen, onClose }: WorkItemQuickEd
       patches.push({ op: 'add', path: '/fields/System.Description', value: description })
     }
 
-    const newFechaInicio = fechaInicio ? toISO(fechaInicio) : ''
-    const prevFechaInicio = workItem.fechaInicio ?? ''
-    if (newFechaInicio !== prevFechaInicio) {
-      patches.push({ op: 'add', path: '/fields/Custom.FechaInicio', value: newFechaInicio })
+    // Compare as YYYY-MM-DD to avoid ISO format mismatches (ADO omits milliseconds)
+    if (fechaInicio !== toDateInput(workItem.fechaInicio)) {
+      patches.push({ op: 'add', path: '/fields/Custom.FechaInicio', value: fechaInicio ? toISO(fechaInicio) : '' })
     }
 
-    const newFechaFin = fechaFin ? toISO(fechaFin) : ''
-    const prevFechaFin = workItem.fechaFin ?? ''
-    if (newFechaFin !== prevFechaFin) {
-      patches.push({ op: 'add', path: '/fields/Custom.FechaFin', value: newFechaFin })
+    if (fechaFin !== toDateInput(workItem.fechaFin)) {
+      patches.push({ op: 'add', path: '/fields/Custom.FechaFin', value: fechaFin ? toISO(fechaFin) : '' })
     }
 
     const newEffort = effortPoints !== '' ? Number(effortPoints) : null
@@ -170,6 +192,10 @@ export function WorkItemQuickEdit({ workItem, isOpen, onClose }: WorkItemQuickEd
 
     if (priority !== null && priority !== (workItem.priority ?? null)) {
       patches.push({ op: 'add', path: '/fields/Microsoft.VSTS.Common.Priority', value: priority })
+    }
+
+    if (featureId !== null && featureId !== originalFeatureId) {
+      patches.push({ op: 'add', path: '/fields/System.Parent', value: featureId })
     }
 
     if (patches.length === 0) { onClose(); return }
@@ -308,6 +334,82 @@ export function WorkItemQuickEdit({ workItem, isOpen, onClose }: WorkItemQuickEd
                   </SelectContent>
                 </Select>
               </div>
+
+              {/* Épica */}
+              {(() => {
+                const displayEpic = epicId
+                  ? (epics?.value.find(e => e.id === epicId)?.title ?? epicName ?? String(epicId))
+                  : null
+                return (
+                  <div className="space-y-1.5">
+                    <label className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground/50 flex items-center gap-1.5">
+                      <Target className="w-3 h-3 text-orange-400" /> Épica
+                    </label>
+                    <Select
+                      value={epicId ? String(epicId) : '__none__'}
+                      onValueChange={(v) => {
+                        const newId = v === '__none__' ? null : Number(v)
+                        setEpicId(newId)
+                        setEpicName(epics?.value.find(e => e.id === newId)?.title ?? null)
+                        setFeatureId(null)
+                        setFeatureName(null)
+                      }}
+                    >
+                      <SelectTrigger className="h-9 bg-muted/20 border-transparent rounded-xl text-xs">
+                        <span className="truncate text-left">
+                          {displayEpic ?? <span className="text-muted-foreground/50">Sin épica</span>}
+                        </span>
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="__none__">Sin épica</SelectItem>
+                        {(epics?.value ?? []).map((e) => (
+                          <SelectItem key={e.id} value={String(e.id)}>{e.title}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )
+              })()}
+
+              {/* Feature */}
+              {(() => {
+                const displayFeature = featureId
+                  ? (features?.value.find(f => f.id === featureId)?.title ?? featureName ?? String(featureId))
+                  : null
+                return (
+                  <div className="space-y-1.5">
+                    <label className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground/50 flex items-center gap-1.5">
+                      <Box className="w-3 h-3 text-blue-400" /> Feature
+                    </label>
+                    <Select
+                      value={featureId ? String(featureId) : '__none__'}
+                      onValueChange={(v) => {
+                        const newId = v === '__none__' ? null : Number(v)
+                        setFeatureId(newId)
+                        setFeatureName(features?.value.find(f => f.id === newId)?.title ?? null)
+                      }}
+                      disabled={!epicId}
+                    >
+                      <SelectTrigger className="h-9 bg-muted/20 border-transparent rounded-xl text-xs">
+                        <span className="truncate text-left">
+                          {displayFeature
+                            ? displayFeature
+                            : epicId
+                              ? <span className="text-muted-foreground/50">Sin feature</span>
+                              : <span className="text-muted-foreground/50">Selecciona una épica primero</span>
+                          }
+                        </span>
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="__none__">Sin feature</SelectItem>
+                        {(features?.value ?? []).map((f) => (
+                          <SelectItem key={f.id} value={String(f.id)}>{f.title}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )
+              })()}
 
               {/* Etiquetas */}
               <div className="space-y-1.5">

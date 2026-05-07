@@ -9,6 +9,9 @@ router.post('/batch', async (req, res) => {
     method: 'POST',
     body: req.body,
   })
+  if (status >= 400) {
+    console.error('[batch] ADO error', status, JSON.stringify(data))
+  }
   res.status(status).json(data)
 })
 

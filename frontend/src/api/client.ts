@@ -98,7 +98,6 @@ export interface WorkItemField {
   // Custom fields (Task)
   'Custom.FechaInicio'?: string
   'Custom.FechaFin'?: string
-  'Custom.TipoHistoriaTecnica'?: string
   // Scheduling fields
   'Microsoft.VSTS.Scheduling.StoryPoints'?: number
   'Microsoft.VSTS.Scheduling.Effort'?: number
@@ -164,14 +163,30 @@ export function getWorkItemsBatch(ids: number[]) {
     return Promise.resolve({ value: [] })
   }
 
-  const body = {
-    ids,
-    $expand: 'all'
-  }
-
   return request<{ value: WorkItem[] }>('/workitems/batch', {
     method: 'POST',
-    body: JSON.stringify(body),
+    body: JSON.stringify({
+      ids,
+      fields: [
+        'System.Id',
+        'System.Title',
+        'System.State',
+        'System.WorkItemType',
+        'System.AssignedTo',
+        'System.IterationPath',
+        'System.Tags',
+        'System.CreatedDate',
+        'System.ChangedDate',
+        'System.CreatedBy',
+        'System.Rev',
+        'System.Parent',
+        'Custom.FechaInicio',
+        'Custom.FechaFin',
+        'Microsoft.VSTS.Scheduling.Effort',
+        'Microsoft.VSTS.Scheduling.RemainingWork',
+        'Microsoft.VSTS.Common.Priority',
+      ],
+    }),
   })
 }
 

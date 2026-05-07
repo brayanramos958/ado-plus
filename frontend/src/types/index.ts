@@ -86,7 +86,6 @@ export interface WorkItemField {
   // Custom fields (solo para Task)
   'Custom.FechaInicio'?: string
   'Custom.FechaFin'?: string
-  'Custom.TipoHistoriaTecnica'?: string
 }
 
 export interface WorkItem {
@@ -112,7 +111,6 @@ export interface WorkItemUI {
   // Custom fields
   fechaInicio?: string
   fechaFin?: string
-  tipoHistoriaTecnica?: string
   effortPoints?: number            // estimated hours
   effortField?: 'Microsoft.VSTS.Scheduling.Effort'
   completedWork?: number

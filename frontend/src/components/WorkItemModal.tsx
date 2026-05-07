@@ -34,7 +34,8 @@ function MetaRow({ icon, label, children }: { icon: React.ReactNode; label: stri
 
 function fmtDate(iso?: string) {
   if (!iso) return '—'
-  return new Date(iso).toLocaleDateString('es', { day: '2-digit', month: 'short', year: 'numeric' })
+  const [y, m, d] = iso.slice(0, 10).split('-').map(Number)
+  return new Date(y, m - 1, d).toLocaleDateString('es', { day: '2-digit', month: 'short', year: 'numeric' })
 }
 
 export function WorkItemModal({ workItem, isOpen, onClose }: WorkItemModalProps) {
@@ -186,6 +187,24 @@ export function WorkItemModal({ workItem, isOpen, onClose }: WorkItemModalProps)
                     </div>
                   </MetaRow>
                 )}
+
+                {/* Epic */}
+                <MetaRow icon={<Target className="w-3.5 h-3.5 text-orange-400" />} label="Épica">
+                  {loadingHierarchy ? (
+                    <Loader2 className="w-3 h-3 animate-spin" />
+                  ) : (
+                    <span className="text-xs">{epicTitle}</span>
+                  )}
+                </MetaRow>
+
+                {/* Feature */}
+                <MetaRow icon={<Box className="w-3.5 h-3.5 text-blue-400" />} label="Feature">
+                  {loadingHierarchy ? (
+                    <Loader2 className="w-3 h-3 animate-spin" />
+                  ) : (
+                    <span className="text-xs">{featureTitle}</span>
+                  )}
+                </MetaRow>
 
                 {/* Sprint */}
                 <MetaRow icon={<GitBranch className="w-3.5 h-3.5" />} label="Sprint / Iteración">

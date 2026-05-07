@@ -49,6 +49,7 @@ export function useFeaturesByEpic(epicId?: number | null) {
     queryKey: ['features', epicId ?? null],
     queryFn: () => api.getFeaturesByEpic(epicId ?? undefined),
     staleTime: 2 * 60_000,
+    enabled: epicId != null,
   })
 }
 
@@ -110,7 +111,6 @@ export function useSprintWorkItems(sprintPath: string) {
         rev: item.fields['System.Rev'],
         fechaInicio: item.fields['Custom.FechaInicio'],
         fechaFin: item.fields['Custom.FechaFin'],
-        tipoHistoriaTecnica: item.fields['Custom.TipoHistoriaTecnica'],
         effortPoints: item.fields['Microsoft.VSTS.Scheduling.Effort'] ?? undefined,
         effortField: item.fields['Microsoft.VSTS.Scheduling.Effort'] != null
           ? 'Microsoft.VSTS.Scheduling.Effort' as const
@@ -122,6 +122,7 @@ export function useSprintWorkItems(sprintPath: string) {
       return workItems
     },
     enabled: !!sprintPath,
+    refetchInterval: 30_000,
   })
 }
 
@@ -222,9 +223,9 @@ export function useUpdateWorkItem() {
           case '/fields/Microsoft.VSTS.Scheduling.RemainingWork':
             update.completedWork = p.value as number; break
           case '/fields/Custom.FechaInicio':
-            update.fechaInicio = p.value as string; break
+            update.fechaInicio = (p.value as string) || undefined; break
           case '/fields/Custom.FechaFin':
-            update.fechaFin = p.value as string; break
+            update.fechaFin = (p.value as string) || undefined; break
         }
       }
 

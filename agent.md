@@ -48,8 +48,11 @@ Azure DevOps REST API v7.0
    ADO devuelve `{ displayName, uniqueName, imageUrl }`.
    El email está en `uniqueName`. Ya está normalizado en `useWorkItems.ts`.
 
-2. **`/workitemsbatch` da 400 si un campo custom no existe en el tipo.**
-   Solución implementada: usar `$expand: 'all'` en el body en lugar de listar campos explícitamente.
+2. **`/workitemsbatch` — usar `expand: 4` en el body (NO `$expand`).**
+   - `$expand` es para query string params, no para el body. ADO lo ignora silenciosamente → devuelve solo campos por defecto, excluyendo custom fields.
+   - La propiedad correcta del body es `expand` con valor entero: `WorkItemExpand.All = 4`.
+   - Usar `fields: [...]` explícito causa 400 si cualquier campo no existe en el proyecto.
+   - Solución correcta: `{ ids, expand: 4 }` en `getWorkItemsBatch` (`frontend/src/api/client.ts`).
 
 3. **El `IterationPath` en queries WIQL no debe URL-encodear la `\`.**
    El path viene así: `DESARROLLO TECNOLOGICO\2026\Q2-ABRIL-2026`.
@@ -127,14 +130,14 @@ Emails en formato `<prefijo>@itsinfocom.com`. Los 2 admins son `arodriguez31` y 
 ## Comandos útiles
 
 ```bash
-# Arrancar todo (raíz del proyecto)
-npm run dev
+# Arrancar todo (raíz del proyecto) — pnpm workspaces
+pnpm dev
 
 # Solo backend — http://localhost:3001
-cd backend && npm run dev
+pnpm --filter ./backend dev
 
 # Solo frontend — http://localhost:5173
-cd frontend && npm run dev
+pnpm --filter ./frontend dev
 
 # Matar procesos zombie de Node (Windows)
 taskkill /F /IM node.exe

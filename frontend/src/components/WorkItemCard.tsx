@@ -1,4 +1,9 @@
 import { useRef, useState } from 'react'
+
+function fmtDateLocal(iso: string, options: Intl.DateTimeFormatOptions): string {
+  const [y, m, d] = iso.slice(0, 10).split('-').map(Number)
+  return new Date(y, m - 1, d).toLocaleDateString('es', options)
+}
 import { Avatar } from './Avatar'
 import { TypeBadge, StateBadge } from './Badge'
 import { TimeConfirmDialog } from './TimeConfirmDialog'
@@ -45,7 +50,7 @@ export function WorkItemCard({ workItem, onClick, draggable }: WorkItemCardProps
     if (newState === 'En proceso' && !workItem.fechaInicio) {
       patches.push({ op: 'add', path: '/fields/Custom.FechaInicio', value: now })
     }
-    if (newState === 'Resuelto') {
+    if (newState === 'Resuelto' && !workItem.fechaFin) {
       patches.push({ op: 'add', path: '/fields/Custom.FechaFin', value: now })
     }
 
@@ -219,10 +224,10 @@ export function WorkItemCard({ workItem, onClick, draggable }: WorkItemCardProps
         {(workItem.fechaInicio || workItem.fechaFin || workItem.completedWork != null) && (
           <div className="mt-1.5 flex items-center flex-wrap gap-x-2 gap-y-0.5 text-[10px] text-muted-foreground border-t border-border pt-1.5">
             {workItem.fechaInicio && (
-              <span className="flex-shrink-0">▶ {new Date(workItem.fechaInicio).toLocaleDateString('es', { day: '2-digit', month: 'short' })}</span>
+              <span className="flex-shrink-0">▶ {fmtDateLocal(workItem.fechaInicio, { day: '2-digit', month: 'short' })}</span>
             )}
             {workItem.fechaFin && (
-              <span className="flex-shrink-0">■ {new Date(workItem.fechaFin).toLocaleDateString('es', { day: '2-digit', month: 'short' })}</span>
+              <span className="flex-shrink-0">■ {fmtDateLocal(workItem.fechaFin, { day: '2-digit', month: 'short' })}</span>
             )}
             {workItem.completedWork != null && (
               <span className="text-primary font-semibold flex-shrink-0">{workItem.completedWork}h</span>

@@ -5,6 +5,41 @@ Frontend React + TypeScript + Vite · Backend Express proxy · ADO REST API v7.0
 
 ---
 
+## Sesión 2026-05-06 (continuación) — Cambios del día
+
+| # | Qué se hizo | Archivos |
+|---|---|---|
+| 1 | **Bug fix** — Fechas no reflejaban en card ni en modal tras editar. Root cause: `$expand: 'all'` (lowercase) es ignorado por ADO → batch devuelve solo campos del sistema, excluye `Custom.*`. Fix: switch a array `fields` explícito con todos los campos necesarios. | `api/client.ts` |
+| 2 | **Bug fix** — `fechaFin` se sobreescribía siempre al llegar a "Resuelto", incluso si el usuario la había puesto manualmente. Fix: agregar condición `!workItem.fechaFin`. | `WorkItemCard.tsx` |
+| 3 | **Bug fix** — `fechaFin` no se borraba al retroceder desde "Resuelto". Fix: revertido porque chocaba con la regla de prioridad del usuario. Comportamiento final: si el usuario puso la fecha, no se toca nunca automáticamente. | `WorkItemCard.tsx` |
+| 4 | WorkItemModal — Epic y Feature agregados como MetaRow en el panel de metadata (además del breadcrumb del header). | `WorkItemModal.tsx` |
+| 5 | WorkItemQuickEdit — Dropdowns de Épica y Feature editables. Epic carga lista completa desde ADO; Feature se filtra por epic seleccionada. Al guardar con feature distinta, patchea `System.Parent`. | `WorkItemQuickEdit.tsx` |
+| 6 | `useFeaturesByEpic` — agregado `enabled: epicId != null` para no fetchear cuando no hay épica seleccionada. | `hooks/useWorkItems.ts` |
+| 7 | `refetchInterval: 30_000` en `useSprintWorkItems` para mantener el board actualizado sin que el usuario tenga que recargar. | `hooks/useWorkItems.ts` |
+| 8 | **Bug fix** — Dropdowns de Épica/Feature mostraban ID numérico en lugar del nombre. Root cause: Radix `<SelectValue>` no puede resolver items dinámicos no renderizados aún. Fix: bypass total — el trigger muestra `epics.find(e => e.id === epicId)?.title ?? epicName ?? String(epicId)` computado directamente en React. | `WorkItemQuickEdit.tsx` |
+| 9 | **Bug fix timezone** — Fechas mostraban un día menos (ej: se pone el 8, se muestra el 7). Root cause: `new Date("YYYY-MM-DD")` es UTC midnight → `toLocaleDateString()` en UTC-5 resta 5h y muestra el día anterior. Fix: `fmtDateLocal()` extrae YYYY-MM-DD y construye `new Date(y, m-1, d)` sin zona horaria. Fix aplicado en `WorkItemCard.tsx` y `WorkItemModal.tsx`. | `WorkItemCard.tsx`, `WorkItemModal.tsx` |
+
+---
+
+## Sesión 2026-05-05 — Cambios del día
+
+| # | Qué se hizo | Archivos |
+|---|---|---|
+| 1 | Sprint dropdown con label "Actual" en sprint corriente | `FilterBar.tsx` |
+| 2 | Sprint info card rediseñada — centrada, chips de fechas, badge animado "Actual" | `SprintPage.tsx` |
+| 3 | WorkItemCard responsive — header row completo como zona de drag, edit button mejorado | `WorkItemCard.tsx` |
+| 4 | TimeConfirmDialog — botón X cancela sin actualizar ADO (Escape también cancela) | `TimeConfirmDialog.tsx`, `SprintBoard.tsx` |
+| 5 | Dark mode fixes — header QuickEdit con azul explícito, avatares fondo gris/texto negro | `WorkItemQuickEdit.tsx`, `SprintBoard.tsx` |
+| 6 | Prioridad invertida — P1=Baja, P2=Media, P3=Alta, P4=Crítica (convención del equipo) | `types/index.ts` |
+| 7 | Limpieza de código — todos los comentarios en inglés, español eliminado | múltiples archivos |
+| 8 | Migración a pnpm — monorepo con `pnpm-workspace.yaml`, `pnpm dev` levanta todo | `package.json`, `pnpm-workspace.yaml` |
+| 9 | Tags multi-select con búsqueda — carga tags reales desde ADO | `WorkItemQuickEdit.tsx`, `CreateTaskModal.tsx` |
+| 10 | **Bug fix** — Tags endpoint necesitaba `api-version=7.1-preview.1` | `routes/members.ts` |
+| 11 | **Bug fix** — FechaInicio/FechaFin no se reflejaban tras guardar. Root cause: `$expand` en el body de la batch request era ignorado por ADO. Fix: `{ ids, expand: 4 }` (WorkItemExpand.All) | `api/client.ts` |
+| 12 | **Bug fix** — Comparación de fechas en handleSave usaba ISO completo; ahora compara YYYY-MM-DD para evitar mismatch de formato con ADO | `WorkItemQuickEdit.tsx` |
+
+---
+
 ## Estado general
 
 | Área | Estado |
@@ -17,6 +52,12 @@ Frontend React + TypeScript + Vite · Backend Express proxy · ADO REST API v7.0
 | Registro de horas al cambiar estado | ✅ Completo |
 | Vista lista (collapse por usuario) | ✅ Completo |
 | Filtros (tipo, asignado, búsqueda) | ✅ Completo |
+| Tags multi-select desde ADO | ✅ Completo |
+| FechaInicio / FechaFin en UI + lógica de prioridad | ✅ Completo (fix 2026-05-06) |
+| Épica y Feature en modal de detalle | ✅ Completo (2026-05-06) |
+| Cambiar Épica / Feature desde QuickEdit | ✅ Completo (2026-05-06) |
+| Auto-refresh del board (cada 30s) | ✅ Completo (2026-05-06) |
+| Timezone fix — fechas sin desfase de día | ✅ Completo (2026-05-06) |
 
 ---
 
@@ -56,6 +97,8 @@ Frontend React + TypeScript + Vite · Backend Express proxy · ADO REST API v7.0
 - Edición inline: estado, fechas inicio/fin, prioridad (grid P1–P4), estimado (h), registrado (h)
 - Escribe esfuerzo al campo correcto detectado por `effortField` (default: `Effort`)
 - Escribe horas registradas a `RemainingWork`
+- **Épica y Feature editables**: carga jerarquía actual desde `useWorkItemHierarchy`, dropdown de Épicas (todas), dropdown de Features filtrado por épica seleccionada. Al guardar con feature distinta patchea `System.Parent`.
+- Fechas con lógica de prioridad: solo se auto-setean si el campo está vacío; si el usuario las puso, nunca se sobreescriben.
 
 ### WorkItemModal (`WorkItemModal.tsx`)
 **Layout:**
@@ -64,6 +107,11 @@ Frontend React + TypeScript + Vite · Backend Express proxy · ADO REST API v7.0
 - **Arriba derecha**: Panel de metadatos completos
   - Responsable (avatar + nombre + email)
   - Prioridad (dot de color + etiqueta)
+  - Sprint / Iteración
+  - Esfuerzo estimado (h)
+  - Trabajo restante (h)
+  - **Épica** (con ícono naranja)
+  - **Feature** (con ícono azul)
   - Sprint / Iteración
   - Esfuerzo estimado (h)
   - Trabajo restante (h)
@@ -98,7 +146,7 @@ Editor Tiptap v3 con sub-paneles inline (sin popovers flotantes):
 |----------|-----------|-------|
 | Horas estimadas (Effort) | `Microsoft.VSTS.Scheduling.Effort` | NO usar StoryPoints ni OriginalEstimate |
 | Horas registradas / Remaining | `Microsoft.VSTS.Scheduling.RemainingWork` | NO usar CompletedWork |
-| Prioridad | `Microsoft.VSTS.Common.Priority` | 1=Crítica, 2=Alta, 3=Media, 4=Baja |
+| Prioridad | `Microsoft.VSTS.Common.Priority` | **P1=Baja, P2=Media, P3=Alta, P4=Crítica** (convención invertida del equipo) |
 | Fecha inicio | `Custom.FechaInicio` | |
 | Fecha fin | `Custom.FechaFin` | |
 | Estado | `System.State` | |
@@ -113,9 +161,10 @@ Browser
   └─ Vite proxy /api → :3001
        └─ Express backend (proxy puro, sin lógica de negocio)
             └─ ADO REST API v7.0
-                 POST /wiql       → IDs por WIQL
-                 POST /workitems/batch → campos completos ($expand=all)
-                 PATCH /workitems/:id  → JSON Patch
+                 POST /wiql                   → IDs por WIQL
+                 POST /workitems/batch        → campos explícitos (fields array de 17 campos)
+                 GET  /workitems/:id          → detalle individual con $expand=all (jerarquía + relaciones)
+                 PATCH /workitems/:id         → JSON Patch (estado, fechas, parent, etc.)
                  POST /workitems/:id/comments → comentarios
 ```
 
@@ -125,12 +174,26 @@ Browser
 
 ---
 
+## Pendiente / Performance
+
+> Estos cambios no son urgentes para sprints normales (20-80 tasks) pero se vuelven necesarios con volumen alto.
+
+### Optimizaciones de render (prioridad alta)
+- [ ] **`React.memo` en `WorkItemCard`** — sin esto, TODAS las cards re-renderizan cada vez que cambia cualquier item en el cache (incluso el refetch cada 30s). Con 50+ tasks por usuario, el lag es perceptible.
+- [ ] **`useMemo` en `filteredItems`** (`SprintBoard.tsx`) — el filtrado por tipo, asignado y búsqueda corre en cada render. Memoizar con `[workItems, filterType, filterAssigned, searchQuery]` como dependencias.
+
+### Robustez de datos (prioridad media)
+- [ ] **Chunking del batch** — ADO limita a 200 IDs por request. Si un sprint supera 200 tasks, el batch actual falla. Fix: partir `ids` en chunks de 200 y hacer requests en paralelo (`Promise.all`). Afecta `api/client.ts → getWorkItemsBatch`.
+- [ ] **`useEpics` paginación lazy** — actualmente fetchea todas las épicas al abrir QuickEdit por primera vez (múltiples chunks de 200 en secuencia si hay muchas épicas). Alternativa: búsqueda con debounce contra ADO en lugar de cargar todas.
+
+---
+
 ## Pendiente / Ideas futuras
 
 - [ ] Asignar múltiples personas a una tarea (actualmente 1:1)
 - [ ] Notificaciones cuando cambia el estado de una tarea asignada
 - [ ] Vista de métricas del sprint (burndown, velocidad)
 - [ ] Filtros avanzados (por prioridad, por épica/feature)
-- [ ] Modo de edición de descripción desde el modal
+- [ ] Modo de edición de descripción desde el modal de detalle
 - [ ] Subir imágenes a ADO Blob Storage (en lugar de base64 en comentarios)
 - [ ] Reordenar tareas dentro de una columna
