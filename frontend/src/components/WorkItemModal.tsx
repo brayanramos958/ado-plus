@@ -1,4 +1,5 @@
 import { useRef, useEffect } from 'react'
+import { toast } from 'sonner'
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { TASK_STATE_COLORS, PRIORITY_COLORS, PRIORITY_LABELS, type WorkItemUI, type Member } from '../types'
@@ -330,12 +331,12 @@ export function WorkItemModal({ workItem, isOpen, onClose }: WorkItemModalProps)
 
             {/* Rich text editor */}
             <RichTextEditor
-              onSubmit={(html) => createComment.mutate(html)}
+              onSubmit={(html) => createComment.mutate(html, {
+                onSuccess: () => toast.success('Comentario publicado'),
+                onError: () => toast.error('Error al publicar el comentario'),
+              })}
               isSubmitting={createComment.isPending}
             />
-            {createComment.isError && (
-              <p className="text-xs text-destructive mt-2">Error al enviar el comentario. Intenta de nuevo.</p>
-            )}
           </div>
         </div>
 

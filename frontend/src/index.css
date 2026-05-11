@@ -168,3 +168,97 @@
 }
 
 .tiptap-content p, .tiptap p { margin: 0.15rem 0; }
+
+/* =====================================================
+   Sonner toasts — ADO badge palette (badge-matching)
+   Light: bg-*-100 text-*-800  |  Dark: bg-*-900/30 text-*-300
+   ===================================================== */
+
+/* --- Light mode backgrounds & borders --- */
+[data-sonner-toast][data-type='success'] { background: #dcfce7 !important; border-color: #bbf7d0 !important; }
+[data-sonner-toast][data-type='error']   { background: #fee2e2 !important; border-color: #fecaca !important; }
+[data-sonner-toast][data-type='warning'] { background: #ffedd5 !important; border-color: #fed7aa !important; }
+[data-sonner-toast][data-type='info']    { background: #dbeafe !important; border-color: #bfdbfe !important; }
+
+/* --- Light mode text (icon, title, description) --- */
+[data-sonner-toast][data-type='success'],
+[data-sonner-toast][data-type='success'] [data-title],
+[data-sonner-toast][data-type='success'] [data-icon]        { color: #166534 !important; }
+[data-sonner-toast][data-type='success'] [data-description] { color: #166534 !important; opacity: 0.75; }
+
+[data-sonner-toast][data-type='error'],
+[data-sonner-toast][data-type='error'] [data-title],
+[data-sonner-toast][data-type='error'] [data-icon]          { color: #991b1b !important; }
+[data-sonner-toast][data-type='error'] [data-description]   { color: #991b1b !important; opacity: 0.75; }
+
+[data-sonner-toast][data-type='warning'],
+[data-sonner-toast][data-type='warning'] [data-title],
+[data-sonner-toast][data-type='warning'] [data-icon]        { color: #9a3412 !important; }
+[data-sonner-toast][data-type='warning'] [data-description] { color: #9a3412 !important; opacity: 0.75; }
+
+[data-sonner-toast][data-type='info'],
+[data-sonner-toast][data-type='info'] [data-title],
+[data-sonner-toast][data-type='info'] [data-icon]           { color: #1e40af !important; }
+[data-sonner-toast][data-type='info'] [data-description]    { color: #1e40af !important; opacity: 0.75; }
+
+/* --- Dark mode backgrounds & borders (glass effect) --- */
+html.dark [data-sonner-toast][data-type='success'] {
+  background: rgba(20, 83, 45, 0.35) !important;
+  border-color: rgba(134, 239, 172, 0.18) !important;
+  backdrop-filter: blur(8px) !important;
+}
+html.dark [data-sonner-toast][data-type='error'] {
+  background: rgba(69, 10, 10, 0.35) !important;
+  border-color: rgba(252, 165, 165, 0.18) !important;
+  backdrop-filter: blur(8px) !important;
+}
+html.dark [data-sonner-toast][data-type='warning'] {
+  background: rgba(67, 20, 7, 0.35) !important;
+  border-color: rgba(253, 186, 116, 0.18) !important;
+  backdrop-filter: blur(8px) !important;
+}
+html.dark [data-sonner-toast][data-type='info'] {
+  background: rgba(30, 58, 138, 0.35) !important;
+  border-color: rgba(147, 197, 253, 0.18) !important;
+  backdrop-filter: blur(8px) !important;
+}
+
+/* --- Dark mode text --- */
+html.dark [data-sonner-toast][data-type='success'],
+html.dark [data-sonner-toast][data-type='success'] [data-title],
+html.dark [data-sonner-toast][data-type='success'] [data-icon]        { color: #86efac !important; }
+html.dark [data-sonner-toast][data-type='success'] [data-description] { color: #86efac !important; opacity: 0.75; }
+
+html.dark [data-sonner-toast][data-type='error'],
+html.dark [data-sonner-toast][data-type='error'] [data-title],
+html.dark [data-sonner-toast][data-type='error'] [data-icon]          { color: #fca5a5 !important; }
+html.dark [data-sonner-toast][data-type='error'] [data-description]   { color: #fca5a5 !important; opacity: 0.75; }
+
+html.dark [data-sonner-toast][data-type='warning'],
+html.dark [data-sonner-toast][data-type='warning'] [data-title],
+html.dark [data-sonner-toast][data-type='warning'] [data-icon]        { color: #fdba74 !important; }
+html.dark [data-sonner-toast][data-type='warning'] [data-description] { color: #fdba74 !important; opacity: 0.75; }
+
+html.dark [data-sonner-toast][data-type='info'],
+html.dark [data-sonner-toast][data-type='info'] [data-title],
+html.dark [data-sonner-toast][data-type='info'] [data-icon]           { color: #93c5fd !important; }
+html.dark [data-sonner-toast][data-type='info'] [data-description]    { color: #93c5fd !important; opacity: 0.75; }
+
+/* --- Close button: dentro del toast, centrado verticalmente con el texto --- */
+[data-sonner-toast] [data-close-button] {
+  position: absolute !important;
+  top: 50% !important;
+  right: 10px !important;
+  left: auto !important;
+  transform: translateY(-50%) !important;
+}
+
+/* --- Close button colores por tipo --- */
+[data-sonner-toast][data-type='success'] [data-close-button],
+[data-sonner-toast][data-type='error'] [data-close-button],
+[data-sonner-toast][data-type='warning'] [data-close-button],
+[data-sonner-toast][data-type='info'] [data-close-button] {
+  background: rgba(128,128,128,0.12) !important;
+  border-color: currentColor !important;
+  color: inherit !important;
+}

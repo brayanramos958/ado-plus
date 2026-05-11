@@ -5,6 +5,18 @@ Frontend React + TypeScript + Vite · Backend Express proxy · ADO REST API v7.0
 
 ---
 
+## Sesión 2026-05-07 — Cambios del día
+
+| # | Qué se hizo | Archivos |
+|---|---|---|
+| 1 | **Bug fix timezone** — Fechas mostraban un día menos (ej: pones el 8, muestra el 7). Root cause: `new Date("YYYY-MM-DD")` interpreta UTC midnight → `toLocaleDateString()` en UTC-5 resta 5h y muestra el día anterior. Fix: `fmtDateLocal()` extrae YYYY-MM-DD y construye `new Date(y, m-1, d)` sin zona. Aplicado también en `WorkItemModal.tsx` con función `fmtDate()`. | `WorkItemCard.tsx`, `WorkItemModal.tsx` |
+| 2 | **Sonner integrado** — Sistema de alertas con Sonner v2. `sonner.tsx` ahora es theme-aware (sin `theme="light"` hardcodeado). `App.tsx` importa `useTheme()` y pasa `theme={theme}` + `closeButton` al `<Toaster>`. Colores semánticos via CSS vars del design system (`--destructive` para error, `--foreground`/`--border` para el resto). | `components/ui/sonner.tsx`, `App.tsx` |
+| 3 | **Toast wired** en los 3 puntos de mutación: `WorkItemQuickEdit` (guardar cambios), `CreateTaskModal` (crear elemento, mensaje dinámico por tipo), `WorkItemModal` (publicar comentario). Try/catch con `toast.success`/`toast.error`. | `WorkItemQuickEdit.tsx`, `CreateTaskModal.tsx`, `WorkItemModal.tsx` |
+| 4 | **Limpieza** — Eliminado estado `toast`/`showToast`/`clearToast` en `boardStore.ts` (nunca se usó). Eliminados bloques de error inline en `WorkItemQuickEdit` y `WorkItemModal` que habrían duplicado el toast. | `boardStore.ts`, `WorkItemQuickEdit.tsx`, `WorkItemModal.tsx` |
+| 5 | **Backdrop blur modales** — `dialog.tsx` overlay mejorado: `bg-black/50 dark:bg-black/70 backdrop-blur-sm`. Antes: `bg-black/10 backdrop-blur-xs` (2px, prácticamente invisible). Aplica a todos los modales de la app. | `components/ui/dialog.tsx` |
+
+---
+
 ## Sesión 2026-05-06 (continuación) — Cambios del día
 
 | # | Qué se hizo | Archivos |
@@ -57,7 +69,9 @@ Frontend React + TypeScript + Vite · Backend Express proxy · ADO REST API v7.0
 | Épica y Feature en modal de detalle | ✅ Completo (2026-05-06) |
 | Cambiar Épica / Feature desde QuickEdit | ✅ Completo (2026-05-06) |
 | Auto-refresh del board (cada 30s) | ✅ Completo (2026-05-06) |
-| Timezone fix — fechas sin desfase de día | ✅ Completo (2026-05-06) |
+| Timezone fix — fechas sin desfase de día | ✅ Completo (2026-05-07) |
+| Sistema de alertas (Sonner) — success/error en mutaciones | ✅ Completo (2026-05-07) |
+| Backdrop blur en modales (light + dark mode) | ✅ Completo (2026-05-07) |
 
 ---
 
@@ -197,3 +211,79 @@ Browser
 - [ ] Modo de edición de descripción desde el modal de detalle
 - [ ] Subir imágenes a ADO Blob Storage (en lugar de base64 en comentarios)
 - [ ] Reordenar tareas dentro de una columna
+
+---
+
+## Implementación futura — Login + PAT por usuario
+
+### Contexto
+
+ADO Plus actualmente expone el PAT en el `.env` del backend. El objetivo es:
+1. Sistema de login (JWT) con registro abierto
+2. Cada usuario guarda su propio PAT de ADO, encriptado AES-256-CBC en SQLite
+3. Org/proyecto ADO sigue siendo global (`.env`); solo el PAT es per-user
+4. En cada request autenticada, el backend usa el PAT del usuario en lugar del global
+
+### Decisiones
+
+| Pregunta | Respuesta |
+|---|---|
+| Registro | **Abierto** |
+| PAT encriptado | **Sí — AES-256-CBC** |
+| Org/proyecto ADO | **Global** (solo PAT es per-user) |
+
+### Arquitectura
+
+```
+Browser → LoginPage / PATSetupPage
+       → JWT en localStorage
+       → Authorization: Bearer <token> en cada request
+       → backend middleware valida JWT
+       → extrae PAT encriptado de SQLite → desencripta → inyecta en adoFetch()
+```
+
+### Dependencias nuevas (backend)
+
+```bash
+npm install better-sqlite3 bcryptjs jsonwebtoken
+npm install -D @types/better-sqlite3 @types/bcryptjs @types/jsonwebtoken
+```
+
+### Archivos a crear/modificar
+
+| Archivo | Acción | Descripción |
+|---|---|---|
+| `backend/src/db.ts` | Crear | SQLite init, tabla `users`, helpers CRUD, `encryptPAT`/`decryptPAT` |
+| `backend/src/routes/auth.ts` | Crear | `POST /register`, `POST /login`, `POST /pat`, `GET /me` |
+| `backend/src/auth/authMiddleware.ts` | Crear | Valida Bearer JWT, adjunta `req.user = { userId, email }` |
+| `backend/src/proxy.ts` | Modificar | `adoFetch(path, options, patToken?)` — fallback a config global |
+| `backend/src/config.ts` | Modificar | Leer `JWT_SECRET` y `ENCRYPTION_KEY` (requeridas) |
+| `backend/src/index.ts` | Modificar | Montar auth router, iniciar DB en startup |
+| `backend/src/routes/workitems.ts` | Modificar | `requireAuth` + usar PAT del usuario |
+| `backend/src/routes/wiql.ts` | Modificar | idem |
+| `backend/src/routes/iterations.ts` | Modificar | idem |
+| `backend/src/routes/members.ts` | Modificar | idem |
+| `backend/.env.example` | Modificar | Agregar `JWT_SECRET`, `ENCRYPTION_KEY` |
+| `frontend/src/context/AuthContext.tsx` | Crear | Estado auth: user, token. Acciones: login, register, logout, savePAT |
+| `frontend/src/pages/LoginPage.tsx` | Crear | Tabs Iniciar sesión / Crear cuenta |
+| `frontend/src/pages/PATSetupPage.tsx` | Crear | Input PAT con link a dev.azure.com |
+| `frontend/src/api/client.ts` | Modificar | `Authorization: Bearer <token>` en todas las llamadas |
+| `frontend/src/App.tsx` | Modificar | Guards: sin user → LoginPage, sin PAT → PATSetupPage |
+| `frontend/src/components/Header.tsx` | Modificar | Email del usuario + botón cerrar sesión |
+
+### Variables de entorno nuevas
+
+```env
+JWT_SECRET=<string aleatorio 64 chars>
+ENCRYPTION_KEY=<string exactamente 32 chars>
+```
+
+### Checklist de verificación
+
+- [ ] Sin token → cualquier `/api/*` devuelve 401
+- [ ] Registro → JWT válido
+- [ ] Login correcto → JWT; incorrecto → error
+- [ ] Sin PAT → redirige a PATSetupPage
+- [ ] Con PAT → board carga con el PAT del usuario autenticado
+- [ ] PAT expirado → frontend muestra opción de actualizar PAT
+- [ ] Logout → elimina token → redirige a LoginPage

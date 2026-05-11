@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
+import { toast } from 'sonner'
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import {
@@ -89,13 +90,15 @@ function SearchableDropdown({
           {selected ? selected.label : placeholder}
         </span>
         {selected && (
-          <button
-            type="button"
+          <span
+            role="button"
+            tabIndex={0}
             onClick={(e) => { e.stopPropagation(); handleSelect('') }}
-            className="flex-shrink-0 text-muted-foreground/40 hover:text-destructive transition-colors"
+            onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.stopPropagation(); handleSelect('') } }}
+            className="flex-shrink-0 text-muted-foreground/40 hover:text-destructive transition-colors cursor-pointer"
           >
             <X className="w-3 h-3" />
-          </button>
+          </span>
         )}
         <ChevronDown className={`w-3.5 h-3.5 flex-shrink-0 text-muted-foreground/40 transition-transform ${open ? 'rotate-180' : ''}`} />
       </button>
@@ -192,7 +195,16 @@ export function CreateTaskModal({ isOpen, onClose, defaultSprintPath, defaultAss
   const [tagSearch, setTagSearch] = useState('')
   const [fechaInicio, setFechaInicio] = useState('')
   const [fechaFin, setFechaFin] = useState('')
+  const [errors, setErrors] = useState<{ assignedTo?: string; epic?: string; feature?: string; effort?: string }>({})
   const tagDropdownRef = useRef<HTMLDivElement>(null)
+  const titleRef = useRef<HTMLTextAreaElement>(null)
+
+  useEffect(() => {
+    const el = titleRef.current
+    if (!el) return
+    el.style.height = 'auto'
+    el.style.height = `${el.scrollHeight}px`
+  }, [title])
 
   const { data: epics } = useEpics()
   const { data: features } = useFeaturesByEpic(epicId)
@@ -232,6 +244,7 @@ export function CreateTaskModal({ isOpen, onClose, defaultSprintPath, defaultAss
       setTagSearch('')
       setFechaInicio('')
       setFechaFin('')
+      setErrors({})
     }
   }, [isOpen, defaultSprintPath, defaultAssignedTo])
 
@@ -242,6 +255,7 @@ export function CreateTaskModal({ isOpen, onClose, defaultSprintPath, defaultAss
   const handleEpicChange = (v: string) => {
     setEpicId(v ? Number(v) : null)
     setFeatureId(null)
+    setErrors(prev => ({ ...prev, epic: v ? undefined : prev.epic, feature: undefined }))
   }
 
   const toggleTag = (tagName: string) => {
@@ -253,21 +267,39 @@ export function CreateTaskModal({ isOpen, onClose, defaultSprintPath, defaultAss
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!title.trim()) return
-    await createMutation.mutateAsync({
-      type,
-      title: title.trim(),
-      description: description.trim() || undefined,
-      state,
-      assignedTo: assignedTo || undefined,
-      iterationPath: sprintPath || undefined,
-      parentId: featureId ?? epicId ?? undefined,
-      tags: tags.length > 0 ? tags.join('; ') : undefined,
-      effortPoints: effortPoints ? Number(effortPoints) : undefined,
-      priority,
-      fechaInicio: fechaInicio || undefined,
-      fechaFin: fechaFin || undefined,
-    })
-    onClose()
+
+    const newErrors: typeof errors = {}
+    if (!assignedTo) newErrors.assignedTo = 'Debes asignar un responsable'
+    if (!epicId) newErrors.epic = 'Debes seleccionar una épica'
+    if (epicId && !featureId) newErrors.feature = 'Debes seleccionar un feature'
+    if (!effortPoints || Number(effortPoints) <= 0) newErrors.effort = 'Debes ingresar el estimado de horas'
+
+    if (Object.keys(newErrors).length > 0) {
+      setErrors(newErrors)
+      return
+    }
+    setErrors({})
+
+    try {
+      await createMutation.mutateAsync({
+        type,
+        title: title.trim(),
+        description: description.trim() || undefined,
+        state,
+        assignedTo: assignedTo || undefined,
+        iterationPath: sprintPath || undefined,
+        parentId: featureId ?? epicId ?? undefined,
+        tags: tags.length > 0 ? tags.join('; ') : undefined,
+        effortPoints: effortPoints ? Number(effortPoints) : undefined,
+        priority,
+        fechaInicio: fechaInicio || undefined,
+        fechaFin: fechaFin || undefined,
+      })
+      toast.success(`${type} creado correctamente`)
+      onClose()
+    } catch {
+      toast.error(`Error al crear el ${type.toLowerCase()}`)
+    }
   }
 
   // Build dropdown options
@@ -338,12 +370,14 @@ export function CreateTaskModal({ isOpen, onClose, defaultSprintPath, defaultAss
                   <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/70 flex items-center gap-1.5">
                     <Layout className="w-3.5 h-3.5 text-primary" /> Título del elemento <span className="text-destructive">*</span>
                   </label>
-                  <input
+                  <textarea
+                    ref={titleRef}
                     autoFocus
+                    rows={1}
                     value={title}
                     onChange={(e) => setTitle(e.target.value)}
                     placeholder="¿Qué tarea o bug estamos registrando?"
-                    className="w-full bg-transparent border-b-2 border-muted-foreground/10 py-2 text-xl font-black focus:border-primary outline-none transition-all placeholder:text-muted-foreground/20"
+                    className="w-full bg-transparent border-b-2 border-muted-foreground/10 py-2 text-xl font-black focus:border-primary outline-none transition-colors placeholder:text-muted-foreground/20 resize-none overflow-hidden leading-snug"
                   />
                 </div>
 
@@ -381,44 +415,72 @@ export function CreateTaskModal({ isOpen, onClose, defaultSprintPath, defaultAss
                 {/* 1. Asignar Responsable */}
                 <div className="space-y-1.5">
                   <label className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground/50 flex items-center gap-1.5">
-                    <User className="w-3 h-3" /> Asignar Responsable
+                    <User className="w-3 h-3" /> Asignar Responsable <span className="text-destructive">*</span>
                   </label>
                   <SearchableDropdown
                     value={assignedTo ?? ''}
-                    onChange={(v) => setAssignedTo(v || null)}
+                    onChange={(v) => {
+                      setAssignedTo(v || null)
+                      if (v) setErrors(prev => ({ ...prev, assignedTo: undefined }))
+                    }}
                     options={memberOptions}
                     placeholder="Sin asignar"
                     clearLabel="Sin asignar"
                     searchPlaceholder="Buscar miembro..."
                     icon={<User className="w-3.5 h-3.5 text-muted-foreground/40" />}
+                    className={errors.assignedTo ? 'ring-1 ring-destructive rounded-xl' : ''}
                   />
+                  {errors.assignedTo && (
+                    <p className="text-[10px] text-destructive font-bold flex items-center gap-1">
+                      <span>⚠</span> {errors.assignedTo}
+                    </p>
+                  )}
                 </div>
 
                 {/* 2. Jerarquía */}
                 <div className="space-y-1.5">
                   <label className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground/50 flex items-center gap-1.5">
-                    <Target className="w-3 h-3" /> Jerarquía Padre
+                    <Target className="w-3 h-3" /> Jerarquía Padre <span className="text-destructive">*</span>
                   </label>
                   <div className="space-y-2">
-                    <SearchableDropdown
-                      value={epicId?.toString() ?? ''}
-                      onChange={handleEpicChange}
-                      options={epicOptions}
-                      placeholder="Épica"
-                      clearLabel="Sin épica"
-                      searchPlaceholder="Buscar épica..."
-                      icon={<Target className="w-3.5 h-3.5 text-orange-500" />}
-                    />
-                    <SearchableDropdown
-                      value={featureId?.toString() ?? ''}
-                      onChange={(v) => setFeatureId(v ? Number(v) : null)}
-                      options={featureOptions}
-                      placeholder="Feature"
-                      clearLabel="Sin feature"
-                      searchPlaceholder="Buscar feature..."
-                      icon={<Box className="w-3.5 h-3.5 text-blue-500" />}
-                      disabled={!epicId}
-                    />
+                    <div>
+                      <SearchableDropdown
+                        value={epicId?.toString() ?? ''}
+                        onChange={handleEpicChange}
+                        options={epicOptions}
+                        placeholder="Épica"
+                        clearLabel="Sin épica"
+                        searchPlaceholder="Buscar épica..."
+                        icon={<Target className="w-3.5 h-3.5 text-orange-500" />}
+                        className={errors.epic ? 'ring-1 ring-destructive rounded-xl' : ''}
+                      />
+                      {errors.epic && (
+                        <p className="text-[10px] text-destructive font-bold flex items-center gap-1 mt-1">
+                          <span>⚠</span> {errors.epic}
+                        </p>
+                      )}
+                    </div>
+                    <div>
+                      <SearchableDropdown
+                        value={featureId?.toString() ?? ''}
+                        onChange={(v) => {
+                          setFeatureId(v ? Number(v) : null)
+                          if (v) setErrors(prev => ({ ...prev, feature: undefined }))
+                        }}
+                        options={featureOptions}
+                        placeholder="Feature"
+                        clearLabel="Sin feature"
+                        searchPlaceholder="Buscar feature..."
+                        icon={<Box className="w-3.5 h-3.5 text-blue-500" />}
+                        disabled={!epicId}
+                        className={errors.feature ? 'ring-1 ring-destructive rounded-xl' : ''}
+                      />
+                      {errors.feature && (
+                        <p className="text-[10px] text-destructive font-bold flex items-center gap-1 mt-1">
+                          <span>⚠</span> {errors.feature}
+                        </p>
+                      )}
+                    </div>
                   </div>
                 </div>
 
@@ -531,20 +593,28 @@ export function CreateTaskModal({ isOpen, onClose, defaultSprintPath, defaultAss
                 <div className="grid grid-cols-2 gap-2">
                   <div className="space-y-1.5">
                     <label className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground/50 flex items-center gap-1">
-                      <Clock className="w-3 h-3" /> Esfuerzo (h)
+                      <Clock className="w-3 h-3" /> Esfuerzo (h) <span className="text-destructive">*</span>
                     </label>
-                    <div className="flex items-center bg-background rounded-xl px-3 py-2 border border-muted-foreground/10 gap-2">
+                    <div className={`flex items-center bg-background rounded-xl px-3 py-2 border gap-2 ${errors.effort ? 'border-destructive ring-1 ring-destructive' : 'border-muted-foreground/10'}`}>
                       <Clock className="w-3.5 h-3.5 text-muted-foreground/40 flex-shrink-0" />
                       <input
                         type="number"
                         min="0"
                         step="0.5"
                         value={effortPoints}
-                        onChange={(e) => setEffortPoints(e.target.value)}
+                        onChange={(e) => {
+                          setEffortPoints(e.target.value)
+                          if (e.target.value && Number(e.target.value) > 0) setErrors(prev => ({ ...prev, effort: undefined }))
+                        }}
                         placeholder="0"
                         className="w-full bg-transparent text-xs font-bold outline-none placeholder:text-muted-foreground/30"
                       />
                     </div>
+                    {errors.effort && (
+                      <p className="text-[10px] text-destructive font-bold flex items-center gap-1">
+                        <span>⚠</span> {errors.effort}
+                      </p>
+                    )}
                   </div>
                   <div className="space-y-1.5">
                     <label className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground/50">Sprint</label>

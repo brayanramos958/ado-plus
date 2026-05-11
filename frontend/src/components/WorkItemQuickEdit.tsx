@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
+import { toast } from 'sonner'
 import { useQuery } from '@tanstack/react-query'
 import * as api from '../api/client'
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
@@ -63,7 +64,15 @@ export function WorkItemQuickEdit({ workItem, isOpen, onClose }: WorkItemQuickEd
   const [originalFeatureId, setOriginalFeatureId] = useState<number | null>(null)
 
   const tagDropdownRef = useRef<HTMLDivElement>(null)
+  const titleRef = useRef<HTMLTextAreaElement>(null)
   const updateMutation = useUpdateWorkItem()
+
+  useEffect(() => {
+    const el = titleRef.current
+    if (!el) return
+    el.style.height = 'auto'
+    el.style.height = `${el.scrollHeight}px`
+  }, [title])
 
   const { data: members } = useMembers()
   const { data: iterations } = useIterations()
@@ -200,8 +209,13 @@ export function WorkItemQuickEdit({ workItem, isOpen, onClose }: WorkItemQuickEd
 
     if (patches.length === 0) { onClose(); return }
 
-    await updateMutation.mutateAsync({ id: workItem.id, patches })
-    onClose()
+    try {
+      await updateMutation.mutateAsync({ id: workItem.id, patches })
+      toast.success('Elemento actualizado correctamente')
+      onClose()
+    } catch {
+      toast.error('Error al guardar los cambios')
+    }
   }
 
   const stateChanged = state !== workItem.state
@@ -243,11 +257,13 @@ export function WorkItemQuickEdit({ workItem, isOpen, onClose }: WorkItemQuickEd
                 <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/70 flex items-center gap-1.5">
                   <Layout className="w-3.5 h-3.5 text-primary" /> Título
                 </label>
-                <input
+                <textarea
+                  ref={titleRef}
+                  rows={1}
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
                   placeholder="Título del elemento..."
-                  className="w-full bg-transparent border-b-2 border-muted-foreground/10 py-2 text-xl font-black focus:border-primary outline-none transition-all placeholder:text-muted-foreground/20"
+                  className="w-full bg-transparent border-b-2 border-muted-foreground/10 py-2 text-xl font-black focus:border-primary outline-none transition-colors placeholder:text-muted-foreground/20 resize-none overflow-hidden leading-snug"
                 />
               </div>
 
@@ -553,12 +569,6 @@ export function WorkItemQuickEdit({ workItem, isOpen, onClose }: WorkItemQuickEd
                 </div>
               </div>
 
-              {/* Error */}
-              {updateMutation.isError && (
-                <div className="px-3 py-2 bg-destructive/10 border border-destructive/20 rounded-lg text-xs text-destructive">
-                  {updateMutation.error instanceof Error ? updateMutation.error.message : 'Error al guardar'}
-                </div>
-              )}
             </div>
           </div>
         </div>

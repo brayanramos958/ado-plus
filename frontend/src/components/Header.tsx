@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { toast } from 'sonner'
 import { useHealth, useMembers } from '../hooks/useWorkItems'
 import { useBoardStore } from '../store/boardStore'
 import { useTheme } from '../context/ThemeContext'
@@ -49,6 +50,35 @@ export function Header({ onNewTask }: HeaderProps) {
 
         {/* Actions */}
         <div className="flex items-center gap-2 sm:gap-3">
+          {/* Toast test buttons */}
+          <div className="hidden sm:flex items-center gap-1 border border-border rounded-lg px-1.5 py-1">
+            <span className="text-[9px] font-black uppercase tracking-widest text-muted-foreground/40 mr-0.5">TEST</span>
+            <button
+              onClick={() => toast.success('Tarea cerrada correctamente')}
+              className="h-5 px-2 rounded text-[9px] font-black bg-[#22C55E] text-white hover:opacity-85 transition-opacity"
+            >
+              OK
+            </button>
+            <button
+              onClick={() => toast.warning('Tarea movida a Resuelto')}
+              className="h-5 px-2 rounded text-[9px] font-black bg-[#F97316] text-white hover:opacity-85 transition-opacity"
+            >
+              WARN
+            </button>
+            <button
+              onClick={() => toast.error('Error al guardar los cambios')}
+              className="h-5 px-2 rounded text-[9px] font-black bg-[#EF4444] text-white hover:opacity-85 transition-opacity"
+            >
+              ERR
+            </button>
+            <button
+              onClick={() => toast.info('Tarea en proceso')}
+              className="h-5 px-2 rounded text-[9px] font-black bg-[#3B82F6] text-white hover:opacity-85 transition-opacity"
+            >
+              INFO
+            </button>
+          </div>
+
           {/* Dark Mode Toggle */}
           <button
             onClick={toggleTheme}

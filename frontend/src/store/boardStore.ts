@@ -28,9 +28,6 @@ interface BoardState {
   editingWorkItemId: number | null
   setEditingWorkItemId: (id: number | null) => void
 
-  toast: { message: string; type: 'success' | 'error' | 'info' } | null
-  showToast: (message: string, type: 'success' | 'error' | 'info') => void
-  clearToast: () => void
 }
 
 export const useBoardStore = create<BoardState>((set) => ({
@@ -61,7 +58,4 @@ export const useBoardStore = create<BoardState>((set) => ({
   editingWorkItemId: null,
   setEditingWorkItemId: (id) => set({ editingWorkItemId: id }),
 
-  toast: null,
-  showToast: (message, type) => set({ toast: { message, type } }),
-  clearToast: () => set({ toast: null }),
 }))

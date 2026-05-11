@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { toast } from 'sonner'
 import { useBoardStore } from '../store/boardStore'
 import { useSprintWorkItems, useUpdateWorkItem } from '../hooks/useWorkItems'
 import { WorkItemCard } from './WorkItemCard'
@@ -270,7 +271,12 @@ function SprintBoardTable({ workItems, onWorkItemClick }: SprintBoardTableProps)
         value: (workItem.completedWork ?? 0) + workItem.effortPoints,
       })
     }
-    updateMutation.mutate({ id, patches })
+
+    const shortTitle = workItem.title.length > 35 ? workItem.title.slice(0, 32) + '…' : workItem.title
+    updateMutation.mutate({ id, patches }, {
+      onSuccess: () => toast.success(`"${shortTitle}" → ${newState}`),
+      onError: () => toast.error('Error al cambiar el estado'),
+    })
   }
 
   // Get unique assignees from work items
@@ -432,17 +438,25 @@ function SprintBoardTable({ workItems, onWorkItemClick }: SprintBoardTableProps)
         estimatedHours={timeConfirm.workItem.effortPoints}
         newState={timeConfirm.newState}
         onConfirm={(hours) => {
+          const { workItem: wi, newState: ns, basePatches } = timeConfirm
           updateMutation.mutate({
-            id: timeConfirm.workItem.id,
+            id: wi.id,
             patches: [
-              ...timeConfirm.basePatches,
+              ...basePatches,
               { op: 'add', path: '/fields/Microsoft.VSTS.Scheduling.RemainingWork', value: hours },
             ],
+          }, {
+            onSuccess: () => toast.success(`${ns} — ${hours}h registradas`),
+            onError: () => toast.error('Error al registrar las horas'),
           })
           setTimeConfirm(null)
         }}
         onSkip={() => {
-          updateMutation.mutate({ id: timeConfirm.workItem.id, patches: timeConfirm.basePatches })
+          const { workItem: wi, newState: ns, basePatches } = timeConfirm
+          updateMutation.mutate({ id: wi.id, patches: basePatches }, {
+            onSuccess: () => toast.success(`Estado cambiado a ${ns}`),
+            onError: () => toast.error('Error al cambiar el estado'),
+          })
           setTimeConfirm(null)
         }}
         onCancel={() => setTimeConfirm(null)}
