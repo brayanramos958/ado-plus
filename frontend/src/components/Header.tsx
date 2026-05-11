@@ -1,6 +1,4 @@
-import { useState } from 'react'
-import { toast } from 'sonner'
-import { useHealth, useMembers } from '../hooks/useWorkItems'
+import { useHealth } from '../hooks/useWorkItems'
 import { useBoardStore } from '../store/boardStore'
 import { useTheme } from '../context/ThemeContext'
 
@@ -10,15 +8,8 @@ interface HeaderProps {
 
 export function Header({ onNewTask }: HeaderProps) {
   const { data: health } = useHealth()
-  const { data: members } = useMembers()
-  const { viewMode, setViewMode, currentUser, setCurrentUser } = useBoardStore()
+  const { viewMode, setViewMode } = useBoardStore()
   const { theme, toggleTheme } = useTheme()
-  const [showUserMenu, setShowUserMenu] = useState(false)
-
-  // Get user display info
-  const currentUserData = members?.value?.find((m) => m.email === currentUser)
-  const displayName = currentUserData?.displayName || currentUser?.split('@')[0] || 'Usuario'
-  const initials = displayName.split(' ').map((n) => n[0]).join('').slice(0, 2).toUpperCase()
 
   return (
     <header className="bg-card border-b border-border">
@@ -50,35 +41,6 @@ export function Header({ onNewTask }: HeaderProps) {
 
         {/* Actions */}
         <div className="flex items-center gap-2 sm:gap-3">
-          {/* Toast test buttons */}
-          <div className="hidden sm:flex items-center gap-1 border border-border rounded-lg px-1.5 py-1">
-            <span className="text-[9px] font-black uppercase tracking-widest text-muted-foreground/40 mr-0.5">TEST</span>
-            <button
-              onClick={() => toast.success('Tarea cerrada correctamente')}
-              className="h-5 px-2 rounded text-[9px] font-black bg-[#22C55E] text-white hover:opacity-85 transition-opacity"
-            >
-              OK
-            </button>
-            <button
-              onClick={() => toast.warning('Tarea movida a Resuelto')}
-              className="h-5 px-2 rounded text-[9px] font-black bg-[#F97316] text-white hover:opacity-85 transition-opacity"
-            >
-              WARN
-            </button>
-            <button
-              onClick={() => toast.error('Error al guardar los cambios')}
-              className="h-5 px-2 rounded text-[9px] font-black bg-[#EF4444] text-white hover:opacity-85 transition-opacity"
-            >
-              ERR
-            </button>
-            <button
-              onClick={() => toast.info('Tarea en proceso')}
-              className="h-5 px-2 rounded text-[9px] font-black bg-[#3B82F6] text-white hover:opacity-85 transition-opacity"
-            >
-              INFO
-            </button>
-          </div>
-
           {/* Dark Mode Toggle */}
           <button
             onClick={toggleTheme}
@@ -131,60 +93,6 @@ export function Header({ onNewTask }: HeaderProps) {
           >
             + Nueva Tarea
           </button>
-
-          {/* User Avatar */}
-          <div className="relative">
-            <button
-              onClick={() => setShowUserMenu(!showUserMenu)}
-              className="flex items-center gap-2 p-1 rounded-lg hover:bg-accent transition-colors"
-            >
-              <div className="w-8 h-8 rounded-full bg-blue-500 flex items-center justify-center text-white text-sm font-medium">
-                {initials}
-              </div>
-              <span className="hidden lg:block text-sm text-foreground">
-                {displayName}
-              </span>
-              <svg
-                className={`hidden lg:block w-4 h-4 text-muted-foreground transition-transform ${
-                  showUserMenu ? 'rotate-180' : ''
-                }`}
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-              </svg>
-            </button>
-
-            {/* User Menu Dropdown */}
-            {showUserMenu && (
-              <div className="absolute right-0 mt-2 w-56 bg-popover rounded-lg shadow-lg border border-border py-1 z-50">
-                <div className="px-4 py-2 border-b border-border">
-                  <p className="text-sm font-medium text-foreground">{displayName}</p>
-                  <p className="text-xs text-muted-foreground">{currentUser || 'Sin seleccionar'}</p>
-                </div>
-                <div className="py-1">
-                  <p className="px-4 py-1 text-xs text-muted-foreground uppercase">Seleccionar usuario</p>
-                  {members?.value?.map((member) => (
-                    <button
-                      key={member.email}
-                      onClick={() => {
-                        setCurrentUser(member.email)
-                        setShowUserMenu(false)
-                      }}
-                      className={`w-full text-left px-4 py-2 text-sm hover:bg-accent ${
-                        currentUser === member.email
-                          ? 'bg-accent text-accent-foreground'
-                          : 'text-foreground'
-                      }`}
-                    >
-                      {member.displayName}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
         </div>
       </div>
     </header>

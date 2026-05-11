@@ -9,7 +9,7 @@ function App() {
   return (
     <TooltipProvider>
       <SprintPage />
-      <Toaster richColors theme={theme} position="top-right" closeButton />
+      <Toaster richColors theme={theme} position="top-center" closeButton />
     </TooltipProvider>
   )
 }
