@@ -29,10 +29,15 @@ function toDateInput(iso?: string): string {
   return new Date(iso).toISOString().slice(0, 10)
 }
 
-// Valor de date → ISO UTC
+/**
+ * Convierte valor de date input (YYYY-MM-DD) a ISO sin el bug de timezone.
+ * new Date("2024-05-10") → 2024-05-10T00:00:00Z → en UTC-5 se muestra el 9 de mayo.
+ * Construimos explícitamente new Date(y, m-1, d) para evitar la interpretación UTC midnight.
+ */
 function toISO(local: string): string {
   if (!local) return ''
-  return new Date(local).toISOString()
+  const [y, m, d] = local.split('-').map(Number)
+  return new Date(y, m - 1, d).toISOString()
 }
 
 interface WorkItemQuickEditProps {

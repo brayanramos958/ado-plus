@@ -1,10 +1,12 @@
-import { AUTH_HEADER, ADO_BASE, PROJECT_PATH, config } from './config'
+import { getAuthHeader, ADO_BASE, PROJECT_PATH, config } from './config'
 
 interface ProxyOptions {
   method?: string
   body?: unknown
   contentType?: string
 }
+
+const FETCH_TIMEOUT_MS = 30_000 // 30 segundos
 
 export async function adoFetch(
   path: string,
@@ -22,7 +24,7 @@ export async function adoFetch(
     : `${ADO_BASE}${cleanPath}${cleanPath.includes('?') ? '&' : '?'}api-version=${config.API_VERSION}`
 
   const headers: Record<string, string> = {
-    Authorization: AUTH_HEADER,
+    Authorization: getAuthHeader(),
     Accept: 'application/json',
   }
 
@@ -30,18 +32,44 @@ export async function adoFetch(
     headers['Content-Type'] = contentType
   }
 
-  const response = await fetch(url, {
-    method,
-    headers,
-    body: body !== undefined ? JSON.stringify(body) : undefined,
-  })
+  const controller = new AbortController()
+  const timeoutId = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS)
 
-  if (response.status === 401) {
-    return { status: 401, data: { error: 'ADO_PAT_EXPIRED', message: 'El token de Azure DevOps expiró. Renovarlo en dev.azure.com → User Settings → Personal access tokens.' } }
+  try {
+    const response = await fetch(url, {
+      method,
+      headers,
+      body: body !== undefined ? JSON.stringify(body) : undefined,
+      signal: controller.signal,
+    })
+
+    clearTimeout(timeoutId)
+
+    if (response.status === 401) {
+      return { status: 401, data: { error: 'ADO_PAT_EXPIRED', message: 'El token de Azure DevOps expiró. Renovarlo en dev.azure.com → User Settings → Personal access tokens.' } }
+    }
+
+    const contentTypeHeader = response.headers.get('content-type') || ''
+    const isJson = contentTypeHeader.includes('application/json')
+    let data: unknown
+
+    if (isJson) {
+      data = await response.json()
+    } else {
+      const text = await response.text()
+      // Si ADO devuelve HTML (error de proxy, maintenance page), no lo exponemos crudo
+      data = { error: 'ADO_NON_JSON_RESPONSE', message: 'ADO devolvió una respuesta no-JSON', status: response.status, preview: text.slice(0, 200) }
+    }
+
+    return { status: response.status, data }
+  } catch (err) {
+    clearTimeout(timeoutId)
+
+    if ((err as Error).name === 'AbortError') {
+      return { status: 504, data: { error: 'ADO_TIMEOUT', message: `La solicitud a ADO excedió ${FETCH_TIMEOUT_MS / 1000}s` } }
+    }
+
+    // Error de red (DNS, conexión rechazada, etc.)
+    return { status: 502, data: { error: 'ADO_NETWORK_ERROR', message: 'No se pudo conectar con Azure DevOps', detail: (err as Error).message } }
   }
-
-  const isJson = response.headers.get('content-type')?.includes('application/json')
-  const data = isJson ? await response.json() : await response.text()
-
-  return { status: response.status, data }
 }

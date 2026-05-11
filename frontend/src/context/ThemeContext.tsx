@@ -30,12 +30,35 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     localStorage.setItem('theme', theme)
   }, [theme])
 
+  const applyTheme = (newTheme: Theme) => {
+    // Si el navegador no soporta View Transitions, hacemos el cambio normal
+    // @ts-ignore - Propiedad nativa moderna
+    if (!document.startViewTransition) {
+      setThemeState(newTheme)
+      return
+    }
+
+    // Usar la API nativa de View Transitions para un cambio super fluido
+    // mutando el DOM de forma síncrona para que la API capture el "después"
+    // @ts-ignore
+    document.startViewTransition(() => {
+      const root = document.documentElement
+      if (newTheme === 'dark') {
+        root.classList.add('dark')
+      } else {
+        root.classList.remove('dark')
+      }
+      setThemeState(newTheme)
+    })
+  }
+
   const toggleTheme = () => {
-    setThemeState((prev) => (prev === 'light' ? 'dark' : 'light'))
+    const newTheme = theme === 'light' ? 'dark' : 'light'
+    applyTheme(newTheme)
   }
 
   const setTheme = (newTheme: Theme) => {
-    setThemeState(newTheme)
+    applyTheme(newTheme)
   }
 
   return (

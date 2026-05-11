@@ -1,9 +1,4 @@
 import { useRef, useState } from 'react'
-
-function fmtDateLocal(iso: string, options: Intl.DateTimeFormatOptions): string {
-  const [y, m, d] = iso.slice(0, 10).split('-').map(Number)
-  return new Date(y, m - 1, d).toLocaleDateString('es', options)
-}
 import { Avatar } from './Avatar'
 import { TypeBadge, StateBadge } from './Badge'
 import { TimeConfirmDialog } from './TimeConfirmDialog'
@@ -118,7 +113,7 @@ export function WorkItemCard({ workItem, onClick, draggable }: WorkItemCardProps
         <div
           className={`flex items-center justify-between mb-2 gap-1 min-w-0 rounded-md -mx-1 px-1 py-0.5
             ${draggable ? 'cursor-grab hover:bg-muted/40 transition-colors' : ''}`}
-          onMouseDown={draggable ? (e) => { isDragHandleActive.current = true } : undefined}
+          onMouseDown={draggable ? () => { isDragHandleActive.current = true } : undefined}
           onMouseUp={draggable ? () => { isDragHandleActive.current = false } : undefined}
         >
           <div className="flex items-center gap-1.5 min-w-0 overflow-hidden">
@@ -250,4 +245,14 @@ export function WorkItemCard({ workItem, onClick, draggable }: WorkItemCardProps
     )}
     </>
   )
+}
+
+/**
+ * Convierte fecha ISO a local sin el bug de new Date("YYYY-MM-DD") = UTC midnight.
+ * En UTC-5, new Date("2024-05-10") → 2024-05-10T00:00:00Z → toLocaleDateString muestra 9 de mayo.
+ * Esta función extrae [y, m, d] y construye new Date(y, m-1, d) → se interpreta en hora local.
+ */
+const fmtDateLocal = (iso: string, options: Intl.DateTimeFormatOptions): string => {
+  const [y, m, d] = iso.slice(0, 10).split('-').map(Number)
+  return new Date(y, m - 1, d).toLocaleDateString('es', options)
 }

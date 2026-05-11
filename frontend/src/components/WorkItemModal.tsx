@@ -1,5 +1,6 @@
 import { useRef, useEffect } from 'react'
 import { toast } from 'sonner'
+import DOMPurify from 'dompurify'
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { TASK_STATE_COLORS, PRIORITY_COLORS, PRIORITY_LABELS, type WorkItemUI, type Member } from '../types'
@@ -125,7 +126,7 @@ export function WorkItemModal({ workItem, isOpen, onClose }: WorkItemModalProps)
             onClick={onClose}
             className="w-9 h-9 flex items-center justify-center rounded-xl text-white/40 hover:text-white hover:bg-white/10 transition-all group flex-shrink-0"
           >
-            <X className="w-4.5 h-4.5 group-hover:rotate-90 transition-transform duration-200" />
+            <X className="w-[1.125rem] h-[1.125rem] group-hover:rotate-90 transition-transform duration-200" />
           </button>
         </div>
 
@@ -148,7 +149,7 @@ export function WorkItemModal({ workItem, isOpen, onClose }: WorkItemModalProps)
               ) : hierarchy?.task?.fields['System.Description'] ? (
                 <div
                   className="tiptap-content text-sm text-foreground/80 leading-relaxed"
-                  dangerouslySetInnerHTML={{ __html: hierarchy.task.fields['System.Description'] as string }}
+                  dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(hierarchy.task.fields['System.Description'] as string) }}
                 />
               ) : (
                 <p className="text-sm italic text-muted-foreground/40">Sin descripción registrada.</p>
@@ -320,7 +321,7 @@ export function WorkItemModal({ workItem, isOpen, onClose }: WorkItemModalProps)
                         </div>
                         <div
                           className="tiptap-content text-sm text-foreground/75 leading-relaxed"
-                          dangerouslySetInnerHTML={{ __html: comment.text }}
+                          dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(comment.text) }}
                         />
                       </div>
                     </div>

@@ -256,7 +256,7 @@ export async function getEpics(): Promise<{ value: WorkItemRef[] }> {
 export async function getFeaturesByEpic(epicId?: number): Promise<{ value: WorkItemRef[] }> {
   const epicFilter = epicId ? `AND [System.Parent] = ${epicId}` : ''
   const wiql = {
-    query: `SELECT [System.Id] FROM WorkItems WHERE [System.WorkItemType] = 'Feature' ${epicFilter} ORDER BY [System.Title] ASC`,
+    query: `SELECT [System.Id] FROM WorkItems WHERE [System.TeamProject] = 'DESARROLLO TECNOLOGICO' AND [System.WorkItemType] = 'Feature' ${epicFilter} ORDER BY [System.Title] ASC`,
   }
   const idsResult = await request<WIQLResponse>('/wiql', { method: 'POST', body: JSON.stringify(wiql) })
   const ids = idsResult.workItems.map((w) => w.id)

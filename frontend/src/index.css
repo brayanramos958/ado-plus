@@ -86,8 +86,8 @@
 
 /* Smooth transitions for theme changes */
 @layer base {
-  * {
-    @apply transition-colors duration-200;
+  body {
+    @apply transition-colors duration-300 ease-in-out;
   }
 }
 

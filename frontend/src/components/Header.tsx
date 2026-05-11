@@ -1,3 +1,5 @@
+import { useState } from 'react'
+import { useQueryClient } from '@tanstack/react-query'
 import { useHealth } from '../hooks/useWorkItems'
 import { useBoardStore } from '../store/boardStore'
 import { useTheme } from '../context/ThemeContext'
@@ -8,8 +10,27 @@ interface HeaderProps {
 
 export function Header({ onNewTask }: HeaderProps) {
   const { data: health } = useHealth()
-  const { viewMode, setViewMode } = useBoardStore()
+  const { viewMode, setViewMode, filterAssigned, sprintPath } = useBoardStore()
   const { theme, toggleTheme } = useTheme()
+  const queryClient = useQueryClient()
+  const [refreshing, setRefreshing] = useState(false)
+
+  const handleRefresh = async () => {
+    setRefreshing(true)
+
+    // Siempre recarga workitems del sprint activo
+    await queryClient.invalidateQueries({ queryKey: ['workitems', sprintPath] })
+
+    // Si está en vista de equipo completo, recarga también epics, features y tags
+    // Si está en tablero de una persona, omite estas queries para no cargar de más
+    if (!filterAssigned) {
+      await queryClient.invalidateQueries({ queryKey: ['epics'] })
+      await queryClient.invalidateQueries({ queryKey: ['features'] })
+      await queryClient.invalidateQueries({ queryKey: ['tags'] })
+    }
+
+    setRefreshing(false)
+  }
 
   return (
     <header className="bg-card border-b border-border">
@@ -41,6 +62,24 @@ export function Header({ onNewTask }: HeaderProps) {
 
         {/* Actions */}
         <div className="flex items-center gap-2 sm:gap-3">
+          {/* Refresh Button */}
+          <button
+            onClick={handleRefresh}
+            disabled={refreshing}
+            className="p-2 rounded-lg hover:bg-accent transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+            aria-label="Recargar datos"
+          >
+            <svg
+              className={`w-5 h-5 text-foreground ${refreshing ? 'animate-spin' : ''}`}
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+              strokeWidth={2}
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+            </svg>
+          </button>
+
           {/* Dark Mode Toggle */}
           <button
             onClick={toggleTheme}

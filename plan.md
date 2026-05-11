@@ -5,6 +5,28 @@ Frontend React + TypeScript + Vite · Backend Express proxy · ADO REST API v7.0
 
 ---
 
+## Sesión 2026-05-11 — Code Review + Fixes de Seguridad y Robustez
+
+| # | Qué se hizo | Archivos |
+|---|---|---|
+| 1 | **Code review exhaustivo** con 4 skills especializadas (`vercel-react-best-practices`, `tailwind-css-patterns`, `typescript-advanced-types`, `nodejs-backend-patterns`). Identificados 22 hallazgos: 4 críticos, 3 altos, 12 medios, 3 bajos. | Todo el repo |
+| 2 | **Fix C1 — Build error**: `fmtDateLocal()` declarada antes de los `import` en `WorkItemCard.tsx`. Movida al final del archivo como arrow function. | `WorkItemCard.tsx` |
+| 3 | **Fix C2 — Backend sin manejo de errores**: Añadido middleware global de errores en `index.ts` que captura excepciones async no manejadas en rutas Express. | `backend/src/index.ts` |
+| 4 | **Fix C3 — Proxy sin timeout**: `adoFetch()` ahora usa `AbortController` con 30s de timeout. Maneja `AbortError` (→ `ADO_TIMEOUT`), errores de red (→ `ADO_NETWORK_ERROR`), y respuestas no-JSON de ADO (→ `ADO_NON_JSON_RESPONSE`). | `backend/src/proxy.ts` |
+| 5 | **Fix C4 — Config validación en import time**: `PAT_TOKEN` ya no usa `required()` en el top-level del módulo. `validateConfig()` se llama explícitamente en startup y en `/api/health`. `AUTH_HEADER` convertido a función `getAuthHeader()` para evitar evaluación en import time con token undefined. | `backend/src/config.ts`, `backend/src/proxy.ts`, `backend/src/index.ts` |
+| 6 | **Fix H1 — XSS en WorkItemModal**: `dangerouslySetInnerHTML` en descripción y comentarios ahora pasa por `DOMPurify.sanitize()` antes de renderizar. Dependencia `dompurify` + `@types/dompurify` añadidas. | `WorkItemModal.tsx`, `frontend/package.json` |
+| 7 | **Fix H2 — WIQL sin filtro de proyecto**: `getFeaturesByEpic()` en `client.ts` ahora incluye `[System.TeamProject] = 'DESARROLLO TECNOLOGICO'` para evitar traer Features de otros proyectos si el PAT tiene acceso multi-proyecto. | `frontend/src/api/client.ts` |
+| 8 | **Fix H3 — Timezone en `toISO()`**: `WorkItemQuickEdit.tsx::toISO()` ahora extrae `[y, m, d]` del string de input y construye `new Date(y, m-1, d)` en vez de `new Date(local)` que interpreta UTC midnight. | `WorkItemQuickEdit.tsx` |
+| 9 | **Fix M6 — Clase Tailwind inválida**: `w-4.5 h-4.5` en `WorkItemModal.tsx` cambiado a `w-[1.125rem] h-[1.125rem]`. `w-4.5` no existe en la escala de Tailwind. | `WorkItemModal.tsx` |
+| 10 | **Revertido — React.memo + useMemo**: Se intentó añadir `React.memo` a `WorkItemCard` y `useMemo` a `filteredItems`/`cellMap`/`totalsByState` en `SprintBoard`. Esto causó frame drops y transiciones toscas. `memo` fuerza shallow comparison síncrona de props en cada card durante transiciones (cientos de comparaciones bloquean el hilo principal). `useMemo` añade overhead de cálculo síncrono al montar `SprintBoardTable`. Revertido a implementación original para mantener fluidez. | `WorkItemCard.tsx`, `SprintBoard.tsx` |
+
+### Decisiones importantes
+- **NO usar `React.memo`** en este proyecto: el board tiene pocas cards por usuario (< 20) y el beneficio de memoización no supera el costo de la shallow comparison en cada transición de estado/vista.
+- **NO usar `useMemo`** para filtros simples: `filter()` sobre < 100 items es negligible comparado con el overhead de gestionar dependencias de memoización.
+- **Backend robusto primero**: timeout, manejo de errores, y validación lazy son críticos para producción. Frontend performance es secundario con volúmenes bajos.
+
+---
+
 ## Sesión 2026-05-07 — Cambios del día
 
 | # | Qué se hizo | Archivos |
@@ -72,6 +94,12 @@ Frontend React + TypeScript + Vite · Backend Express proxy · ADO REST API v7.0
 | Timezone fix — fechas sin desfase de día | ✅ Completo (2026-05-07) |
 | Sistema de alertas (Sonner) — success/error en mutaciones | ✅ Completo (2026-05-07) |
 | Backdrop blur en modales (light + dark mode) | ✅ Completo (2026-05-07) |
+| Sanitización HTML (DOMPurify) — protección XSS | ✅ Completo (2026-05-11) |
+| Timeout de red en proxy (30s) | ✅ Completo (2026-05-11) |
+| Manejo de errores async en backend | ✅ Completo (2026-05-11) |
+| Validación lazy de configuración | ✅ Completo (2026-05-11) |
+| Filtro TeamProject en WIQL de Features | ✅ Completo (2026-05-11) |
+| Fix timezone en `toISO()` de QuickEdit | ✅ Completo (2026-05-11) |
 
 ---
 

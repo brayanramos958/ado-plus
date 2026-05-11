@@ -8,7 +8,7 @@ const required = (key: string): string => {
 }
 
 export const config = {
-  PAT_TOKEN: required('PAT_TOKEN'),
+  _patToken: process.env.PAT_TOKEN,
   ADO_ORG: process.env.ADO_ORG ?? 'itsinfocom',
   ADO_PROJECT: process.env.ADO_PROJECT ?? 'DESARROLLO%20TECNOLOGICO',
   ADO_PROJECT_NAME: process.env.ADO_PROJECT_NAME ?? 'DESARROLLO TECNOLOGICO',
@@ -18,7 +18,26 @@ export const config = {
   PORT: parseInt(process.env.PORT ?? '3001', 10),
 }
 
-export const AUTH_HEADER = `Basic ${Buffer.from(`:${config.PAT_TOKEN}`).toString('base64')}`
+/**
+ * Valida que todas las variables requeridas estén presentes.
+ * Se llama en startup y en /api/health, no en import time.
+ */
+export function validateConfig(): void {
+  config._patToken = required('PAT_TOKEN')
+}
+
+/** Obtiene el PAT validado. Lanza si validateConfig() no fue llamado antes. */
+export function getPATToken(): string {
+  if (!config._patToken) {
+    throw new Error('PAT_TOKEN no configurado. validateConfig() debe llamarse antes de usar getPATToken()')
+  }
+  return config._patToken
+}
+
+export function getAuthHeader(): string {
+  return `Basic ${Buffer.from(`:${getPATToken()}`).toString('base64')}`
+}
+
 export const ADO_BASE = `https://dev.azure.com/${config.ADO_ORG}`
 // PROJECT_PATH solo es el proyecto (para rutas que YA incluyen el proyecto al inicio)
 export const PROJECT_PATH = `/${config.ADO_PROJECT}`
