@@ -1,4 +1,5 @@
 import type { Config } from 'tailwindcss'
+import plugin from 'tailwindcss/plugin'
 
 export default {
   content: ['./index.html', './src/**/*.{ts,tsx}'],
@@ -80,5 +81,29 @@ export default {
       },
     },
   },
-  plugins: [],
+  plugins: [
+    // Scrollbar utilities — evita dependencia externa, compatible con JIT + @apply
+    plugin(({ addUtilities }) => {
+      addUtilities({
+        '.scrollbar-thin': {
+          'scrollbar-width': 'thin',
+        },
+        '.scrollbar-thumb-border': {
+          '--tw-scrollbar-thumb': 'hsl(var(--border))',
+        },
+        '.scrollbar-thumb-muted-foreground\\/25': {
+          '--tw-scrollbar-thumb': 'hsl(var(--muted-foreground) / 0.25)',
+        },
+        '.scrollbar-thumb-muted-foreground\\/40': {
+          '--tw-scrollbar-thumb': 'hsl(var(--muted-foreground) / 0.4)',
+        },
+        '.scrollbar-thumb-muted-foreground\\/50': {
+          '--tw-scrollbar-thumb': 'hsl(var(--muted-foreground) / 0.5)',
+        },
+        '.scrollbar-track-transparent': {
+          '--tw-scrollbar-track': 'transparent',
+        },
+      })
+    }),
+  ],
 } satisfies Config

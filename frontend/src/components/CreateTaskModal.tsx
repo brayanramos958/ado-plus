@@ -33,6 +33,7 @@ interface SearchableDropdownProps {
   icon?: React.ReactNode
   disabled?: boolean
   className?: string
+  'aria-labelledby'?: string
 }
 
 function SearchableDropdown({
@@ -45,6 +46,7 @@ function SearchableDropdown({
   icon,
   disabled,
   className = '',
+  'aria-labelledby': ariaLabelledBy,
 }: SearchableDropdownProps) {
   const [open, setOpen] = useState(false)
   const [search, setSearch] = useState('')
@@ -81,6 +83,9 @@ function SearchableDropdown({
         type="button"
         disabled={disabled}
         onClick={() => { setOpen((o) => !o); setSearch('') }}
+        aria-haspopup="listbox"
+        aria-expanded={open}
+        aria-labelledby={ariaLabelledBy}
         className={`w-full h-9 flex items-center gap-2 px-3 rounded-xl border text-xs transition-colors
           ${disabled ? 'opacity-50 cursor-not-allowed bg-muted/10 border-muted-foreground/5' : 'bg-muted/20 border-transparent hover:bg-muted/40 cursor-pointer'}
           ${open ? 'ring-2 ring-primary/20' : ''}`}
@@ -108,13 +113,14 @@ function SearchableDropdown({
           {/* Search input */}
           <div className="flex items-center gap-2 px-3 py-2 border-b border-border">
             <Search className="w-3.5 h-3.5 text-muted-foreground/40 flex-shrink-0" />
-            <input
-              autoFocus
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder={searchPlaceholder}
-              className="flex-1 text-xs bg-transparent outline-none placeholder:text-muted-foreground/40"
-            />
+          <input
+            autoFocus
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder={searchPlaceholder}
+            aria-label={searchPlaceholder}
+            className="flex-1 text-xs bg-transparent outline-none placeholder:text-muted-foreground/40"
+          />
             {search && (
               <button type="button" onClick={() => setSearch('')} className="text-muted-foreground/40 hover:text-foreground">
                 <X className="w-3 h-3" />
@@ -367,10 +373,12 @@ export function CreateTaskModal({ isOpen, onClose, defaultSprintPath, defaultAss
 
                 {/* Título */}
                 <div className="space-y-2">
-                  <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/70 flex items-center gap-1.5">
+                  <label htmlFor="create-title" className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/70 flex items-center gap-1.5">
                     <Layout className="w-3.5 h-3.5 text-primary" /> Título del elemento <span className="text-destructive">*</span>
                   </label>
                   <textarea
+                    id="create-title"
+                    name="title"
                     ref={titleRef}
                     autoFocus
                     rows={1}
@@ -399,13 +407,15 @@ export function CreateTaskModal({ isOpen, onClose, defaultSprintPath, defaultAss
 
                 {/* Descripción */}
                 <div className="space-y-2">
-                  <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/70 flex items-center gap-1.5">
+                  <label htmlFor="create-description" className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/70 flex items-center gap-1.5">
                     <MessageSquare className="w-3.5 h-3.5 text-primary" /> Descripción Detallada
                   </label>
-                  <RichTextEditor
-                    onChange={(html) => setDescription(html)}
-                    placeholder="Agrega notas, requisitos técnicos o pasos para reproducir..."
-                  />
+                  <div id="create-description">
+                    <RichTextEditor
+                      onChange={(html) => setDescription(html)}
+                      placeholder="Agrega notas, requisitos técnicos o pasos para reproducir..."
+                    />
+                  </div>
                 </div>
               </div>
 
@@ -414,7 +424,7 @@ export function CreateTaskModal({ isOpen, onClose, defaultSprintPath, defaultAss
 
                 {/* 1. Asignar Responsable */}
                 <div className="space-y-1.5">
-                  <label className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground/50 flex items-center gap-1.5">
+                  <label id="create-assigned-label" className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground/50 flex items-center gap-1.5">
                     <User className="w-3 h-3" /> Asignar Responsable <span className="text-destructive">*</span>
                   </label>
                   <SearchableDropdown
@@ -429,6 +439,7 @@ export function CreateTaskModal({ isOpen, onClose, defaultSprintPath, defaultAss
                     searchPlaceholder="Buscar miembro..."
                     icon={<User className="w-3.5 h-3.5 text-muted-foreground/40" />}
                     className={errors.assignedTo ? 'ring-1 ring-destructive rounded-xl' : ''}
+                    aria-labelledby="create-assigned-label"
                   />
                   {errors.assignedTo && (
                     <p className="text-[10px] text-destructive font-bold flex items-center gap-1">
@@ -439,7 +450,7 @@ export function CreateTaskModal({ isOpen, onClose, defaultSprintPath, defaultAss
 
                 {/* 2. Jerarquía */}
                 <div className="space-y-1.5">
-                  <label className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground/50 flex items-center gap-1.5">
+                  <label id="create-hierarchy-label" className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground/50 flex items-center gap-1.5">
                     <Target className="w-3 h-3" /> Jerarquía Padre <span className="text-destructive">*</span>
                   </label>
                   <div className="space-y-2">
@@ -453,6 +464,7 @@ export function CreateTaskModal({ isOpen, onClose, defaultSprintPath, defaultAss
                         searchPlaceholder="Buscar épica..."
                         icon={<Target className="w-3.5 h-3.5 text-orange-500" />}
                         className={errors.epic ? 'ring-1 ring-destructive rounded-xl' : ''}
+                        aria-labelledby="create-hierarchy-label"
                       />
                       {errors.epic && (
                         <p className="text-[10px] text-destructive font-bold flex items-center gap-1 mt-1">
@@ -474,6 +486,7 @@ export function CreateTaskModal({ isOpen, onClose, defaultSprintPath, defaultAss
                         icon={<Box className="w-3.5 h-3.5 text-blue-500" />}
                         disabled={!epicId}
                         className={errors.feature ? 'ring-1 ring-destructive rounded-xl' : ''}
+                        aria-labelledby="create-hierarchy-label"
                       />
                       {errors.feature && (
                         <p className="text-[10px] text-destructive font-bold flex items-center gap-1 mt-1">
@@ -486,7 +499,7 @@ export function CreateTaskModal({ isOpen, onClose, defaultSprintPath, defaultAss
 
                 {/* 3. Etiquetas */}
                 <div className="space-y-1.5">
-                  <label className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground/50 flex items-center gap-1.5">
+                  <label id="create-tags-label" className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground/50 flex items-center gap-1.5">
                     <Tag className="w-3 h-3" /> Etiquetas
                   </label>
 
@@ -507,6 +520,9 @@ export function CreateTaskModal({ isOpen, onClose, defaultSprintPath, defaultAss
                     <button
                       type="button"
                       onClick={() => { setTagDropdownOpen((o) => !o); setTagSearch('') }}
+                      aria-haspopup="listbox"
+                      aria-expanded={tagDropdownOpen}
+                      aria-labelledby="create-tags-label"
                       className="w-full h-9 flex items-center justify-between px-3 rounded-xl border border-muted-foreground/10 bg-background text-xs text-muted-foreground hover:bg-muted/30 transition-colors"
                     >
                       <span>{tags.length > 0 ? `${tags.length} seleccionada${tags.length !== 1 ? 's' : ''}` : 'Seleccionar etiquetas...'}</span>
@@ -522,6 +538,7 @@ export function CreateTaskModal({ isOpen, onClose, defaultSprintPath, defaultAss
                             value={tagSearch}
                             onChange={(e) => setTagSearch(e.target.value)}
                             placeholder="Buscar etiqueta..."
+                            aria-label="Buscar etiqueta"
                             className="flex-1 text-xs bg-transparent outline-none placeholder:text-muted-foreground/40"
                           />
                           {tagSearch && (
@@ -592,12 +609,14 @@ export function CreateTaskModal({ isOpen, onClose, defaultSprintPath, defaultAss
                 {/* 5. Esfuerzo + Sprint */}
                 <div className="grid grid-cols-2 gap-2">
                   <div className="space-y-1.5">
-                    <label className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground/50 flex items-center gap-1">
+                    <label htmlFor="create-effort" className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground/50 flex items-center gap-1">
                       <Clock className="w-3 h-3" /> Esfuerzo (h) <span className="text-destructive">*</span>
                     </label>
                     <div className={`flex items-center bg-background rounded-xl px-3 py-2 border gap-2 ${errors.effort ? 'border-destructive ring-1 ring-destructive' : 'border-muted-foreground/10'}`}>
                       <Clock className="w-3.5 h-3.5 text-muted-foreground/40 flex-shrink-0" />
                       <input
+                        id="create-effort"
+                        name="effort"
                         type="number"
                         min="0"
                         step="0.5"
@@ -617,9 +636,9 @@ export function CreateTaskModal({ isOpen, onClose, defaultSprintPath, defaultAss
                     )}
                   </div>
                   <div className="space-y-1.5">
-                    <label className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground/50">Sprint</label>
+                    <label id="create-sprint-label" className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground/50">Sprint</label>
                     <Select value={sprintPath || ''} onValueChange={(v) => setSprintPath(v ?? '')}>
-                      <SelectTrigger className="h-9 bg-background border-muted-foreground/10 rounded-xl text-xs">
+                      <SelectTrigger aria-labelledby="create-sprint-label" className="h-9 bg-background border-muted-foreground/10 rounded-xl text-xs">
                         <SelectValue>
                           <span className="truncate text-[11px] font-bold">{currentSprintName}</span>
                         </SelectValue>
@@ -639,20 +658,20 @@ export function CreateTaskModal({ isOpen, onClose, defaultSprintPath, defaultAss
                 {/* Fechas */}
                 <div className="grid grid-cols-2 gap-2">
                   <div className="space-y-1.5">
-                    <label className="text-[9px] font-black uppercase tracking-widest text-muted-foreground/40 flex items-center gap-1">
+                    <label htmlFor="create-start" className="text-[9px] font-black uppercase tracking-widest text-muted-foreground/40 flex items-center gap-1">
                       <Calendar className="w-2.5 h-2.5" /> Inicio
                     </label>
                     <div className="flex items-center bg-background rounded-xl px-3 py-2 border border-muted-foreground/10">
-                      <input type="date" value={fechaInicio} onChange={(e) => setFechaInicio(e.target.value)}
+                      <input id="create-start" name="startDate" type="date" value={fechaInicio} onChange={(e) => setFechaInicio(e.target.value)}
                         className="w-full text-xs bg-transparent outline-none" />
                     </div>
                   </div>
                   <div className="space-y-1.5">
-                    <label className="text-[9px] font-black uppercase tracking-widest text-muted-foreground/40 flex items-center gap-1">
+                    <label htmlFor="create-end" className="text-[9px] font-black uppercase tracking-widest text-muted-foreground/40 flex items-center gap-1">
                       <Calendar className="w-2.5 h-2.5" /> Fin
                     </label>
                     <div className="flex items-center bg-background rounded-xl px-3 py-2 border border-muted-foreground/10">
-                      <input type="date" value={fechaFin} onChange={(e) => setFechaFin(e.target.value)}
+                      <input id="create-end" name="endDate" type="date" value={fechaFin} onChange={(e) => setFechaFin(e.target.value)}
                         className="w-full text-xs bg-transparent outline-none" />
                     </div>
                   </div>

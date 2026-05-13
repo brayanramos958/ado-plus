@@ -268,10 +268,12 @@ export function WorkItemQuickEdit({ workItem, isOpen, onClose }: WorkItemQuickEd
 
               {/* Título */}
               <div className="space-y-2">
-                <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/70 flex items-center gap-1.5">
+                <label htmlFor="edit-title" className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/70 flex items-center gap-1.5">
                   <Layout className="w-3.5 h-3.5 text-primary" /> Título
                 </label>
                 <textarea
+                  id="edit-title"
+                  name="title"
                   ref={titleRef}
                   rows={1}
                   value={title}
@@ -283,9 +285,10 @@ export function WorkItemQuickEdit({ workItem, isOpen, onClose }: WorkItemQuickEd
 
               {/* Descripción */}
               <div className="space-y-2">
-                <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/70 flex items-center gap-1.5">
+                <label htmlFor="edit-description" className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/70 flex items-center gap-1.5">
                   <MessageSquare className="w-3.5 h-3.5 text-primary" /> Descripción
                 </label>
+                <div id="edit-description">
                 {loadingDescription ? (
                   <div className="h-32 rounded-2xl border border-muted-foreground/15 bg-muted/10 animate-pulse" />
                 ) : (
@@ -296,6 +299,7 @@ export function WorkItemQuickEdit({ workItem, isOpen, onClose }: WorkItemQuickEd
                     placeholder="Escribe para actualizar la descripción..."
                   />
                 )}
+                </div>
               </div>
             </div>
 
@@ -304,7 +308,7 @@ export function WorkItemQuickEdit({ workItem, isOpen, onClose }: WorkItemQuickEd
 
               {/* Estado */}
               <div className="space-y-1.5">
-                <label className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground/50">Estado</label>
+                <label id="edit-state-label" className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground/50">Estado</label>
                 <div className="flex flex-wrap gap-1.5">
                   {states.map((s) => (
                     <button
@@ -329,11 +333,11 @@ export function WorkItemQuickEdit({ workItem, isOpen, onClose }: WorkItemQuickEd
 
               {/* Asignado a */}
               <div className="space-y-1.5">
-                <label className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground/50 flex items-center gap-1.5">
+                <label id="edit-assigned-label" className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground/50 flex items-center gap-1.5">
                   <User className="w-3 h-3" /> Asignar Responsable
                 </label>
                 <Select value={assignedTo || '__none__'} onValueChange={(v) => setAssignedTo(!v || v === '__none__' ? '' : v)}>
-                  <SelectTrigger className="h-9 bg-muted/20 border-transparent rounded-xl text-xs">
+                  <SelectTrigger aria-labelledby="edit-assigned-label" className="h-9 bg-muted/20 border-transparent rounded-xl text-xs">
                     <SelectValue placeholder="Sin asignar" />
                   </SelectTrigger>
                   <SelectContent>
@@ -349,9 +353,9 @@ export function WorkItemQuickEdit({ workItem, isOpen, onClose }: WorkItemQuickEd
 
               {/* Sprint */}
               <div className="space-y-1.5">
-                <label className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground/50">Sprint</label>
+                <label id="edit-sprint-label" className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground/50">Sprint</label>
                 <Select value={sprintPath || '__none__'} onValueChange={(v) => setSprintPath(!v || v === '__none__' ? '' : v)}>
-                  <SelectTrigger className="h-9 bg-muted/20 border-transparent rounded-xl text-xs">
+                  <SelectTrigger aria-labelledby="edit-sprint-label" className="h-9 bg-muted/20 border-transparent rounded-xl text-xs">
                     <SelectValue placeholder="Sin sprint" />
                   </SelectTrigger>
                   <SelectContent>
@@ -367,13 +371,16 @@ export function WorkItemQuickEdit({ workItem, isOpen, onClose }: WorkItemQuickEd
 
               {/* Épica */}
               <div className="space-y-1.5">
-                <label className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground/50 flex items-center gap-1.5">
+                <label id="edit-epic-label" className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground/50 flex items-center gap-1.5">
                   <Target className="w-3 h-3 text-orange-400" /> Épica
                 </label>
                 <div ref={epicDropdownRef} className="relative">
                   <button
                     type="button"
                     onClick={() => { setEpicSearchOpen((o) => !o); setEpicSearch('') }}
+                    aria-haspopup="listbox"
+                    aria-expanded={epicSearchOpen}
+                    aria-labelledby="edit-epic-label"
                     className="w-full h-9 flex items-center justify-between px-3 rounded-xl border border-muted-foreground/10 bg-background text-xs hover:bg-muted/30 transition-colors"
                   >
                     <span className="truncate text-left">
@@ -404,6 +411,7 @@ export function WorkItemQuickEdit({ workItem, isOpen, onClose }: WorkItemQuickEd
                           value={epicSearch}
                           onChange={(e) => setEpicSearch(e.target.value)}
                           placeholder="Buscar épica..."
+                          aria-label="Buscar épica"
                           className="flex-1 text-xs bg-transparent outline-none placeholder:text-muted-foreground/40"
                         />
                         {epicSearch && (
@@ -452,7 +460,7 @@ export function WorkItemQuickEdit({ workItem, isOpen, onClose }: WorkItemQuickEd
                   : null
                 return (
                   <div className="space-y-1.5">
-                    <label className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground/50 flex items-center gap-1.5">
+                    <label id="edit-feature-label" className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground/50 flex items-center gap-1.5">
                       <Box className="w-3 h-3 text-blue-400" /> Feature
                     </label>
                     <Select
@@ -464,7 +472,7 @@ export function WorkItemQuickEdit({ workItem, isOpen, onClose }: WorkItemQuickEd
                       }}
                       disabled={!epicId}
                     >
-                      <SelectTrigger className="h-9 bg-muted/20 border-transparent rounded-xl text-xs">
+                      <SelectTrigger aria-labelledby="edit-feature-label" className="h-9 bg-muted/20 border-transparent rounded-xl text-xs">
                         <span className="truncate text-left">
                           {displayFeature
                             ? displayFeature
@@ -487,7 +495,7 @@ export function WorkItemQuickEdit({ workItem, isOpen, onClose }: WorkItemQuickEd
 
               {/* Etiquetas */}
               <div className="space-y-1.5">
-                <label className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground/50 flex items-center gap-1.5">
+                <label id="edit-tags-label" className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground/50 flex items-center gap-1.5">
                   <Tag className="w-3 h-3" /> Etiquetas
                 </label>
                 {tags.length > 0 && (
@@ -506,6 +514,9 @@ export function WorkItemQuickEdit({ workItem, isOpen, onClose }: WorkItemQuickEd
                   <button
                     type="button"
                     onClick={() => { setTagDropdownOpen((o) => !o); setTagSearch('') }}
+                    aria-haspopup="listbox"
+                    aria-expanded={tagDropdownOpen}
+                    aria-labelledby="edit-tags-label"
                     className="w-full h-9 flex items-center justify-between px-3 rounded-xl border border-muted-foreground/10 bg-background text-xs text-muted-foreground hover:bg-muted/30 transition-colors"
                   >
                     <span>{tags.length > 0 ? `${tags.length} seleccionada${tags.length !== 1 ? 's' : ''}` : 'Seleccionar etiquetas...'}</span>
@@ -520,6 +531,7 @@ export function WorkItemQuickEdit({ workItem, isOpen, onClose }: WorkItemQuickEd
                           value={tagSearch}
                           onChange={(e) => setTagSearch(e.target.value)}
                           placeholder="Buscar etiqueta..."
+                          aria-label="Buscar etiqueta"
                           className="flex-1 text-xs bg-transparent outline-none placeholder:text-muted-foreground/40"
                         />
                         {tagSearch && (
@@ -567,7 +579,7 @@ export function WorkItemQuickEdit({ workItem, isOpen, onClose }: WorkItemQuickEd
 
               {/* Prioridad */}
               <div className="space-y-1.5">
-                <label className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground/50 flex items-center gap-1.5">
+                <label id="edit-priority-label" className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground/50 flex items-center gap-1.5">
                   <AlertCircle className="w-3 h-3" /> Prioridad
                 </label>
                 <div className="grid grid-cols-4 gap-1.5">
@@ -590,17 +602,17 @@ export function WorkItemQuickEdit({ workItem, isOpen, onClose }: WorkItemQuickEd
               {/* Esfuerzo */}
               <div className="grid grid-cols-2 gap-2">
                 <div className="space-y-1.5">
-                  <label className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground/50 flex items-center gap-1">
+                  <label htmlFor="edit-effort" className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground/50 flex items-center gap-1">
                     <Clock className="w-3 h-3" /> Estimado (h)
                   </label>
-                  <Input type="number" min="0" step="0.5" value={effortPoints}
+                  <Input id="edit-effort" name="effort" type="number" min="0" step="0.5" value={effortPoints}
                     onChange={(e) => setEffortPoints(e.target.value)} placeholder="0" className="h-9" />
                 </div>
                 <div className="space-y-1.5">
-                  <label className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground/50 flex items-center gap-1">
+                  <label htmlFor="edit-completed" className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground/50 flex items-center gap-1">
                     <Clock className="w-3 h-3" /> Registrado (h)
                   </label>
-                  <Input type="number" min="0" step="0.5" value={completedWork}
+                  <Input id="edit-completed" name="completed" type="number" min="0" step="0.5" value={completedWork}
                     onChange={(e) => setCompletedWork(e.target.value)} placeholder="0" className="h-9" />
                 </div>
               </div>
@@ -608,20 +620,20 @@ export function WorkItemQuickEdit({ workItem, isOpen, onClose }: WorkItemQuickEd
               {/* Fechas */}
               <div className="grid grid-cols-2 gap-2">
                 <div className="space-y-1.5">
-                  <label className="text-[9px] font-black uppercase tracking-widest text-muted-foreground/40 flex items-center gap-1">
+                  <label htmlFor="edit-start" className="text-[9px] font-black uppercase tracking-widest text-muted-foreground/40 flex items-center gap-1">
                     <Calendar className="w-2.5 h-2.5" /> Inicio
                   </label>
                   <div className="flex items-center bg-background rounded-xl px-3 py-2 border border-muted-foreground/10">
-                    <input type="date" value={fechaInicio} onChange={(e) => setFechaInicio(e.target.value)}
+                    <input id="edit-start" name="startDate" type="date" value={fechaInicio} onChange={(e) => setFechaInicio(e.target.value)}
                       className="w-full text-xs bg-transparent outline-none" />
                   </div>
                 </div>
                 <div className="space-y-1.5">
-                  <label className="text-[9px] font-black uppercase tracking-widest text-muted-foreground/40 flex items-center gap-1">
+                  <label htmlFor="edit-end" className="text-[9px] font-black uppercase tracking-widest text-muted-foreground/40 flex items-center gap-1">
                     <Calendar className="w-2.5 h-2.5" /> Fin
                   </label>
                   <div className="flex items-center bg-background rounded-xl px-3 py-2 border border-muted-foreground/10">
-                    <input type="date" value={fechaFin} onChange={(e) => setFechaFin(e.target.value)}
+                    <input id="edit-end" name="endDate" type="date" value={fechaFin} onChange={(e) => setFechaFin(e.target.value)}
                       className="w-full text-xs bg-transparent outline-none" />
                   </div>
                 </div>

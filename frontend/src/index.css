@@ -59,28 +59,43 @@
   }
 }
 
-/* Custom scrollbar for dark mode */
-@layer utilities {
-  .scrollbar-thin {
-    scrollbar-width: thin;
+/* =====================================================
+   Scrollbar — Light + Dark mode (tailwind-scrollbar plugin)
+   thumb/track colores vía utilidades, solo geometría en CSS
+   ===================================================== */
+
+@layer base {
+  * {
+    @apply scrollbar-thin scrollbar-thumb-border scrollbar-track-transparent;
+    scrollbar-color: var(--tw-scrollbar-thumb) transparent;
   }
 
-  html.dark .scrollbar-thin::-webkit-scrollbar {
-    width: 6px;
-    height: 6px;
+  ::-webkit-scrollbar {
+    @apply w-2 h-2;
   }
 
-  html.dark .scrollbar-thin::-webkit-scrollbar-track {
-    background: hsl(var(--background));
+  ::-webkit-scrollbar-track {
+    background: transparent;
   }
 
-  html.dark .scrollbar-thin::-webkit-scrollbar-thumb {
-    background: hsl(240 3.7% 15.9%);
-    border-radius: 3px;
+  ::-webkit-scrollbar-thumb {
+    border-radius: 9999px;
+    border: 2px solid transparent;
+    background-clip: content-box;
+    background-color: var(--tw-scrollbar-thumb);
+    transition: background-color 0.15s ease;
   }
 
-  html.dark .scrollbar-thin::-webkit-scrollbar-thumb:hover {
-    background: hsl(240 5% 64.9%);
+  ::-webkit-scrollbar-thumb:hover {
+    @apply scrollbar-thumb-muted-foreground/40;
+  }
+
+  html.dark * {
+    @apply scrollbar-thumb-muted-foreground/25;
+  }
+
+  html.dark ::-webkit-scrollbar-thumb:hover {
+    @apply scrollbar-thumb-muted-foreground/50;
   }
 }
 

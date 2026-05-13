@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
+import { useVirtualizer } from '@tanstack/react-virtual'
 import { toast } from 'sonner'
 import { useBoardStore } from '../store/boardStore'
 import { useSprintWorkItems, useUpdateWorkItem } from '../hooks/useWorkItems'
@@ -88,10 +89,10 @@ export function SprintBoard({ sprintPath, onWorkItemClick }: SprintBoardProps) {
   }
 
   return (
-    <div className="h-full w-full overflow-auto flex flex-col">
+    <div className="h-full w-full flex flex-col">
       {/* Botón Volver - Solo aparece si hay un usuario filtrado */}
       {filterAssigned && (
-        <div className="p-3 bg-background border-b border-border flex items-center">
+        <div className="flex-shrink-0 p-3 bg-background border-b border-border flex items-center">
           <button
             onClick={() => useBoardStore.getState().setFilterAssigned(null)}
             className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-muted-foreground hover:text-primary hover:bg-primary/5 rounded-md transition-colors group"
@@ -308,9 +309,19 @@ function SprintBoardTable({ workItems, onWorkItemClick }: SprintBoardTableProps)
 
   const assigneeList = Array.from(assignees.values())
 
+  const parentRef = useRef<HTMLDivElement>(null)
+
+  const rowVirtualizer = useVirtualizer({
+    count: assigneeList.length,
+    getScrollElement: () => parentRef.current,
+    estimateSize: () => 150,
+    measureElement: (el) => el.getBoundingClientRect().height,
+    overscan: 3,
+  })
+
   return (
     <>
-    <div className="min-w-full min-h-full">
+    <div ref={parentRef} className="flex-1 min-w-full overflow-auto">
       {/* Header de estados - STICKY siempre visible */}
       <div className="flex sticky top-0 z-50 bg-background border-b border-border shadow-sm">
         {/* Columna Usuario - sticky left */}
@@ -342,102 +353,115 @@ function SprintBoardTable({ workItems, onWorkItemClick }: SprintBoardTableProps)
         </div>
       </div>
 
-      {/* Contenido - scrollable */}
-      <div className="relative">
-        {/* Filas de usuarios */}
-        {assigneeList.map((assignee) => (
-          <div
-            key={assignee.email || 'unassigned'}
-            className="flex border-b border-border/50 hover:bg-muted/30"
-          >
-            {/* Usuario - sticky left */}
-            <div className="sticky left-0 z-20 w-48 flex-shrink-0 p-3 flex items-center gap-2 bg-background border-r border-border/50 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)]">
-              <div
-                className={`w-8 h-8 rounded-full flex items-center justify-center text-slate-700 text-sm font-medium flex-shrink-0
-                  ${assignee.email ? 'bg-slate-200' : 'bg-slate-300'}`}
-              >
-                {assignee.email ? getInitials(assignee.name) : '?'}
-              </div>
-              <div className="min-w-0">
-                <p className="text-sm font-medium text-foreground truncate">
-                  {assignee.name}
-                </p>
-                <p className="text-xs text-muted-foreground truncate">{assignee.email || 'Sin asignar'}</p>
-              </div>
-            </div>
+      {/* Filas virtualizadas */}
+      <div style={{ height: rowVirtualizer.getTotalSize(), position: 'relative' }}>
+        {rowVirtualizer.getVirtualItems().map((virtualRow) => {
+          const assignee = assigneeList[virtualRow.index]
+          const cellKeyPrefix = assignee.email || 'unassigned'
 
-            {/* Columnas de estado - contenido scrollable */}
-            {TASK_STATES.map((state) => {
-              const items = workItems.filter(
-                (w) => (w.assignedTo || null) === (assignee.email || null) && w.state === state
-              )
-              const cellKey = `${assignee.email || 'unassigned'}|${state}`
-              const isDragOver = dragOverKey === cellKey
-
-              return (
+          return (
+            <div
+              key={virtualRow.key}
+              ref={rowVirtualizer.measureElement}
+              data-index={virtualRow.index}
+              style={{
+                position: 'absolute',
+                top: 0,
+                left: 0,
+                width: '100%',
+                transform: `translateY(${virtualRow.start}px)`,
+              }}
+              className="flex border-b border-border/50 hover:bg-muted/30"
+            >
+              {/* Usuario - sticky left */}
+              <div className="sticky left-0 z-20 w-48 flex-shrink-0 p-3 flex items-center gap-2 bg-background border-r border-border/50 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)]">
                 <div
-                  key={state}
-                  onDragOver={(e) => {
-                    e.preventDefault()
-                    e.dataTransfer.dropEffect = 'move'
-                    if (dragOverKey !== cellKey) setDragOverKey(cellKey)
-                  }}
-                  onDragLeave={(e) => {
-                    if (!e.currentTarget.contains(e.relatedTarget as Node)) {
-                      setDragOverKey(null)
-                    }
-                  }}
-                  onDrop={(e) => handleDrop(e, state as WorkItemState)}
-                  className={`flex-1 min-w-[160px] p-2 border-l border-border/50 min-h-[80px] transition-colors
-                    ${isDragOver ? 'bg-primary/5 ring-2 ring-inset ring-primary/20 rounded-sm' : ''}`}
+                  className={`w-8 h-8 rounded-full flex items-center justify-center text-slate-700 text-sm font-medium flex-shrink-0
+                    ${assignee.email ? 'bg-slate-200' : 'bg-slate-300'}`}
                 >
-                  <div className="space-y-2">
-                    {items.map((item) => (
-                      <WorkItemCard
-                        key={item.id}
-                        workItem={item}
-                        draggable
-                        onClick={stableClick}
-                      />
-                    ))}
-                    {items.length === 0 && (
-                      <div className={`h-16 flex items-center justify-center text-xs transition-colors
-                        ${isDragOver ? 'text-primary/40 font-medium' : 'text-muted-foreground/30'}`}>
-                        {isDragOver ? 'Soltar aquí' : '—'}
-                      </div>
-                    )}
-                  </div>
+                  {assignee.email ? getInitials(assignee.name) : '?'}
                 </div>
-              )
-            })}
-
-            {/* Total */}
-            <div className="w-20 flex-shrink-0 p-3 flex items-center justify-center bg-muted/30">
-              <span className="text-sm font-semibold text-foreground">
-                {workItems.filter(
-                  (w) => (w.assignedTo || null) === (assignee.email || null)
-                ).length}
-              </span>
-            </div>
-          </div>
-        ))}
-
-        {/* Resumen total - sticky bottom */}
-        <div className="flex sticky bottom-0 z-40 bg-muted/95 backdrop-blur-sm border-t-2 border-border">
-          <div className="sticky left-0 z-50 w-48 flex-shrink-0 p-3 bg-muted border-r border-border font-bold">
-            <span className="text-sm text-foreground uppercase">TOTAL</span>
-          </div>
-          {TASK_STATES.map((state) => {
-            const count = getCountByState(workItems, state)
-            return (
-              <div key={state} className="flex-1 min-w-[160px] p-3 text-center">
-                <span className="text-sm font-semibold text-foreground">{count}</span>
+                <div className="min-w-0">
+                  <p className="text-sm font-medium text-foreground truncate">
+                    {assignee.name}
+                  </p>
+                  <p className="text-xs text-muted-foreground truncate">{assignee.email || 'Sin asignar'}</p>
+                </div>
               </div>
-            )
-          })}
-          <div className="w-20 flex-shrink-0 p-3 flex items-center justify-center">
-            <span className="text-sm font-bold text-foreground">{workItems.length}</span>
-          </div>
+
+              {/* Columnas de estado - contenido scrollable */}
+              {TASK_STATES.map((state) => {
+                const items = workItems.filter(
+                  (w) => (w.assignedTo || null) === (assignee.email || null) && w.state === state
+                )
+                const cellKey = `${cellKeyPrefix}|${state}`
+                const isDragOver = dragOverKey === cellKey
+
+                return (
+                  <div
+                    key={state}
+                    onDragOver={(e) => {
+                      e.preventDefault()
+                      e.dataTransfer.dropEffect = 'move'
+                      if (dragOverKey !== cellKey) setDragOverKey(cellKey)
+                    }}
+                    onDragLeave={(e) => {
+                      if (!e.currentTarget.contains(e.relatedTarget as Node)) {
+                        setDragOverKey(null)
+                      }
+                    }}
+                    onDrop={(e) => handleDrop(e, state as WorkItemState)}
+                    className={`flex-1 min-w-[160px] p-2 border-l border-border/50 min-h-[80px] transition-colors
+                      ${isDragOver ? 'bg-primary/5 ring-2 ring-inset ring-primary/20 rounded-sm' : ''}`}
+                  >
+                    <div className="space-y-2">
+                      {items.map((item) => (
+                        <WorkItemCard
+                          key={item.id}
+                          workItem={item}
+                          draggable
+                          onClick={stableClick}
+                        />
+                      ))}
+                      {items.length === 0 && (
+                        <div className={`h-16 flex items-center justify-center text-xs transition-colors
+                          ${isDragOver ? 'text-primary/40 font-medium' : 'text-muted-foreground/30'}`}>
+                          {isDragOver ? 'Soltar aquí' : '—'}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )
+              })}
+
+              {/* Total */}
+              <div className="w-20 flex-shrink-0 p-3 flex items-center justify-center bg-muted/30">
+                <span className="text-sm font-semibold text-foreground">
+                  {workItems.filter(
+                    (w) => (w.assignedTo || null) === (assignee.email || null)
+                  ).length}
+                </span>
+              </div>
+            </div>
+          )
+        })}
+      </div>
+
+      {/* Resumen total - sticky bottom */}
+      <div className="flex sticky bottom-0 z-40 bg-muted/95 backdrop-blur-sm border-t-2 border-border">
+        <div className="sticky left-0 z-50 w-48 flex-shrink-0 p-3 bg-muted border-r border-border font-bold">
+          <span className="text-sm text-foreground uppercase">TOTAL</span>
+        </div>
+        {TASK_STATES.map((state) => {
+          const count = getCountByState(workItems, state)
+          return (
+            <div key={state} className="flex-1 min-w-[160px] p-3 text-center">
+              <span className="text-sm font-semibold text-foreground">{count}</span>
+            </div>
+          )
+        })}
+        <div className="w-20 flex-shrink-0 p-3 flex items-center justify-center">
+          <span className="text-sm font-bold text-foreground">{workItems.length}</span>
         </div>
       </div>
     </div>
