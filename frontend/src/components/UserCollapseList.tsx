@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useCallback, useRef } from 'react'
 import { WorkItemCard } from './WorkItemCard'
 import type { WorkItemUI } from '../types'
 
@@ -17,6 +17,13 @@ export function UserCollapseList({ workItems, onWorkItemClick }: UserCollapseLis
   // Group items by assignee
   const assigneeGroups = groupByAssignee(workItems)
 
+  // ── Stable callback for React.memo ──
+  const onClickRef = useRef(onWorkItemClick)
+  onClickRef.current = onWorkItemClick
+  const stableClick = useCallback((id: number) => {
+    onClickRef.current?.(id)
+  }, [])
+
   if (assigneeGroups.length === 0) {
     return (
       <div className="text-center py-12 text-gray-400 dark:text-dark-500">
@@ -31,7 +38,7 @@ export function UserCollapseList({ workItems, onWorkItemClick }: UserCollapseLis
         <UserCollapseItem
           key={group.email || 'unassigned'}
           group={group}
-          onWorkItemClick={onWorkItemClick}
+          onWorkItemClick={stableClick}
         />
       ))}
     </div>
@@ -130,7 +137,7 @@ function UserCollapseItem({ group, onWorkItemClick }: UserCollapseItemProps) {
               <WorkItemCard
                 key={item.id}
                 workItem={item}
-                onClick={() => onWorkItemClick?.(item.id)}
+                onClick={onWorkItemClick}
               />
             ))}
           </div>

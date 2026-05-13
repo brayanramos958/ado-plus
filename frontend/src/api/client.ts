@@ -158,36 +158,48 @@ export interface WorkItemsBatchRequest {
   fields: string[]
 }
 
+const BATCH_CHUNK_SIZE = 200 // ADO REST API limit per request
+const BATCH_FIELDS = [
+  'System.Id',
+  'System.Title',
+  'System.State',
+  'System.WorkItemType',
+  'System.AssignedTo',
+  'System.IterationPath',
+  'System.Tags',
+  'System.CreatedDate',
+  'System.ChangedDate',
+  'System.CreatedBy',
+  'System.Rev',
+  'System.Parent',
+  'Custom.FechaInicio',
+  'Custom.FechaFin',
+  'Microsoft.VSTS.Scheduling.Effort',
+  'Microsoft.VSTS.Scheduling.RemainingWork',
+  'Microsoft.VSTS.Common.Priority',
+]
+
 export function getWorkItemsBatch(ids: number[]) {
   if (ids.length === 0) {
     return Promise.resolve({ value: [] })
   }
 
-  return request<{ value: WorkItem[] }>('/workitems/batch', {
-    method: 'POST',
-    body: JSON.stringify({
-      ids,
-      fields: [
-        'System.Id',
-        'System.Title',
-        'System.State',
-        'System.WorkItemType',
-        'System.AssignedTo',
-        'System.IterationPath',
-        'System.Tags',
-        'System.CreatedDate',
-        'System.ChangedDate',
-        'System.CreatedBy',
-        'System.Rev',
-        'System.Parent',
-        'Custom.FechaInicio',
-        'Custom.FechaFin',
-        'Microsoft.VSTS.Scheduling.Effort',
-        'Microsoft.VSTS.Scheduling.RemainingWork',
-        'Microsoft.VSTS.Common.Priority',
-      ],
-    }),
-  })
+  // Split into chunks of 200 (ADO batch limit) and execute in parallel
+  const chunks: number[][] = []
+  for (let i = 0; i < ids.length; i += BATCH_CHUNK_SIZE) {
+    chunks.push(ids.slice(i, i + BATCH_CHUNK_SIZE))
+  }
+
+  const requests = chunks.map((chunk) =>
+    request<{ value: WorkItem[] }>('/workitems/batch', {
+      method: 'POST',
+      body: JSON.stringify({ ids: chunk, fields: BATCH_FIELDS }),
+    })
+  )
+
+  return Promise.all(requests).then((results) => ({
+    value: results.flatMap((r) => r.value),
+  }))
 }
 
 export function getWorkItemDetails(id: number) {
@@ -226,9 +238,12 @@ interface SimpleWorkItemBatch {
   }>
 }
 
-export async function getEpics(): Promise<{ value: WorkItemRef[] }> {
+export async function getEpics(searchQuery?: string): Promise<{ value: WorkItemRef[] }> {
+  const searchFilter = searchQuery
+    ? `AND [System.Title] CONTAINS '${searchQuery.replace(/'/g, "''")}'`
+    : ''
   const wiql = {
-    query: "SELECT [System.Id] FROM WorkItems WHERE [System.TeamProject] = 'DESARROLLO TECNOLOGICO' AND [System.WorkItemType] = 'Epic' ORDER BY [System.Title] ASC",
+    query: `SELECT [System.Id] FROM WorkItems WHERE [System.TeamProject] = 'DESARROLLO TECNOLOGICO' AND [System.WorkItemType] = 'Epic' ${searchFilter} ORDER BY [System.Title] ASC`,
   }
   const idsResult = await request<WIQLResponse>('/wiql', { method: 'POST', body: JSON.stringify(wiql) })
   const ids = idsResult.workItems.map((w) => w.id)

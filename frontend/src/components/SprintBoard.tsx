@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { toast } from 'sonner'
 import { useBoardStore } from '../store/boardStore'
 import { useSprintWorkItems, useUpdateWorkItem } from '../hooks/useWorkItems'
@@ -17,6 +17,34 @@ export function SprintBoard({ sprintPath, onWorkItemClick }: SprintBoardProps) {
   const { filterType, filterAssigned, searchQuery, viewMode } = useBoardStore()
   const { data: workItems, isLoading, error } = useSprintWorkItems(sprintPath)
 
+  // ── useMemo ANTES de cualquier return condicional (Rules of Hooks) ──
+  const filteredItems = useMemo(() => {
+    let items = workItems || []
+
+    if (filterType) {
+      items = items.filter((w) => w.type === filterType)
+    }
+
+    if (filterAssigned === 'unassigned') {
+      items = items.filter((w) => !w.assignedTo)
+    } else if (filterAssigned) {
+      items = items.filter(
+        (w) => w.assignedTo?.toLowerCase() === filterAssigned.toLowerCase()
+      )
+    }
+
+    if (searchQuery) {
+      const query = searchQuery.toLowerCase()
+      items = items.filter(
+        (w) =>
+          w.title.toLowerCase().includes(query) ||
+          String(w.id).includes(query)
+      )
+    }
+
+    return items
+  }, [workItems, filterType, filterAssigned, searchQuery])
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -31,30 +59,6 @@ export function SprintBoard({ sprintPath, onWorkItemClick }: SprintBoardProps) {
         <p className="text-red-500 dark:text-red-400">Error al cargar las tareas</p>
         <p className="text-sm text-gray-400 dark:text-dark-500 mt-1">{String(error)}</p>
       </div>
-    )
-  }
-
-  // Apply filters
-  let filteredItems = workItems || []
-
-  if (filterType) {
-    filteredItems = filteredItems.filter((w) => w.type === filterType)
-  }
-
-  if (filterAssigned === 'unassigned') {
-    filteredItems = filteredItems.filter((w) => !w.assignedTo)
-  } else if (filterAssigned) {
-    filteredItems = filteredItems.filter(
-      (w) => w.assignedTo?.toLowerCase() === filterAssigned.toLowerCase()
-    )
-  }
-
-  if (searchQuery) {
-    const query = searchQuery.toLowerCase()
-    filteredItems = filteredItems.filter(
-      (w) =>
-        w.title.toLowerCase().includes(query) ||
-        String(w.id).includes(query)
     )
   }
 
@@ -231,6 +235,13 @@ function SprintBoardTable({ workItems, onWorkItemClick }: SprintBoardTableProps)
 
   const CONFIRM_STATES: WorkItemState[] = ['Bloqueado', 'Resuelto', 'Cerrado']
 
+  // ── Stable callback for React.memo: always calls the latest onWorkItemClick prop ──
+  const onClickRef = useRef(onWorkItemClick)
+  onClickRef.current = onWorkItemClick
+  const stableClick = useCallback((id: number) => {
+    onClickRef.current?.(id)
+  }, [])
+
   // Clear highlight if drag ends outside any valid drop zone
   useEffect(() => {
     const handler = () => setDragOverKey(null)
@@ -386,7 +397,7 @@ function SprintBoardTable({ workItems, onWorkItemClick }: SprintBoardTableProps)
                         key={item.id}
                         workItem={item}
                         draggable
-                        onClick={() => onWorkItemClick?.(item.id)}
+                        onClick={stableClick}
                       />
                     ))}
                     {items.length === 0 && (

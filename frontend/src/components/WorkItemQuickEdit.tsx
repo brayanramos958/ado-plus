@@ -64,11 +64,14 @@ export function WorkItemQuickEdit({ workItem, isOpen, onClose }: WorkItemQuickEd
   const [priority, setPriority] = useState<number | null>(null)
   const [epicId, setEpicId] = useState<number | null>(null)
   const [epicName, setEpicName] = useState<string | null>(null)
+  const [epicSearchOpen, setEpicSearchOpen] = useState(false)
+  const [epicSearch, setEpicSearch] = useState('')
   const [featureId, setFeatureId] = useState<number | null>(null)
   const [featureName, setFeatureName] = useState<string | null>(null)
   const [originalFeatureId, setOriginalFeatureId] = useState<number | null>(null)
 
   const tagDropdownRef = useRef<HTMLDivElement>(null)
+  const epicDropdownRef = useRef<HTMLDivElement>(null)
   const titleRef = useRef<HTMLTextAreaElement>(null)
   const updateMutation = useUpdateWorkItem()
 
@@ -83,7 +86,7 @@ export function WorkItemQuickEdit({ workItem, isOpen, onClose }: WorkItemQuickEd
   const { data: iterations } = useIterations()
   const { data: availableTags, isLoading: loadingTags, isError: tagsError } = useTags()
   const { data: hierarchy } = useWorkItemHierarchy(isOpen ? workItem?.id ?? null : null)
-  const { data: epics } = useEpics()
+  const { data: epics } = useEpics(epicSearch || undefined)
   const { data: features } = useFeaturesByEpic(epicId)
 
   const { data: fullItem, isLoading: loadingDescription } = useQuery({
@@ -111,6 +114,8 @@ export function WorkItemQuickEdit({ workItem, isOpen, onClose }: WorkItemQuickEd
       setPriority(workItem.priority ?? null)
       setTagDropdownOpen(false)
       setTagSearch('')
+      setEpicSearchOpen(false)
+      setEpicSearch('')
       setOpenCount((c) => c + 1)
       // Reset epic/feature until hierarchy loads
       setEpicId(null)
@@ -137,6 +142,10 @@ export function WorkItemQuickEdit({ workItem, isOpen, onClose }: WorkItemQuickEd
       if (tagDropdownRef.current && !tagDropdownRef.current.contains(e.target as Node)) {
         setTagDropdownOpen(false)
         setTagSearch('')
+      }
+      if (epicDropdownRef.current && !epicDropdownRef.current.contains(e.target as Node)) {
+        setEpicSearchOpen(false)
+        setEpicSearch('')
       }
     }
     document.addEventListener('mousedown', handler)
@@ -357,40 +366,84 @@ export function WorkItemQuickEdit({ workItem, isOpen, onClose }: WorkItemQuickEd
               </div>
 
               {/* Épica */}
-              {(() => {
-                const displayEpic = epicId
-                  ? (epics?.value.find(e => e.id === epicId)?.title ?? epicName ?? String(epicId))
-                  : null
-                return (
-                  <div className="space-y-1.5">
-                    <label className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground/50 flex items-center gap-1.5">
-                      <Target className="w-3 h-3 text-orange-400" /> Épica
-                    </label>
-                    <Select
-                      value={epicId ? String(epicId) : '__none__'}
-                      onValueChange={(v) => {
-                        const newId = v === '__none__' ? null : Number(v)
-                        setEpicId(newId)
-                        setEpicName(epics?.value.find(e => e.id === newId)?.title ?? null)
-                        setFeatureId(null)
-                        setFeatureName(null)
-                      }}
-                    >
-                      <SelectTrigger className="h-9 bg-muted/20 border-transparent rounded-xl text-xs">
-                        <span className="truncate text-left">
-                          {displayEpic ?? <span className="text-muted-foreground/50">Sin épica</span>}
-                        </span>
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="__none__">Sin épica</SelectItem>
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground/50 flex items-center gap-1.5">
+                  <Target className="w-3 h-3 text-orange-400" /> Épica
+                </label>
+                <div ref={epicDropdownRef} className="relative">
+                  <button
+                    type="button"
+                    onClick={() => { setEpicSearchOpen((o) => !o); setEpicSearch('') }}
+                    className="w-full h-9 flex items-center justify-between px-3 rounded-xl border border-muted-foreground/10 bg-background text-xs hover:bg-muted/30 transition-colors"
+                  >
+                    <span className="truncate text-left">
+                      {epicId
+                        ? (epics?.value.find(e => e.id === epicId)?.title ?? epicName ?? `#${epicId}`)
+                        : <span className="text-muted-foreground/50">Sin épica</span>
+                      }
+                    </span>
+                    {epicId && (
+                      <span
+                        role="button"
+                        tabIndex={0}
+                        onClick={(e) => { e.stopPropagation(); setEpicId(null); setEpicName(null); setFeatureId(null); setFeatureName(null); setEpicSearch('') }}
+                        onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.stopPropagation(); setEpicId(null); setEpicName(null); setFeatureId(null); setFeatureName(null); setEpicSearch('') } }}
+                        className="flex-shrink-0 text-muted-foreground/40 hover:text-destructive transition-colors cursor-pointer mr-1"
+                      >
+                        <X className="w-3 h-3" />
+                      </span>
+                    )}
+                    <ChevronDown className={`w-3.5 h-3.5 flex-shrink-0 text-muted-foreground/40 transition-transform ${epicSearchOpen ? 'rotate-180' : ''}`} />
+                  </button>
+                  {epicSearchOpen && (
+                    <div className="absolute z-50 top-full mt-1 w-full min-w-[220px] bg-popover border border-border rounded-xl shadow-xl overflow-hidden">
+                      <div className="flex items-center gap-2 px-3 py-2 border-b border-border">
+                        <Search className="w-3.5 h-3.5 text-muted-foreground/40 flex-shrink-0" />
+                        <input
+                          autoFocus
+                          value={epicSearch}
+                          onChange={(e) => setEpicSearch(e.target.value)}
+                          placeholder="Buscar épica..."
+                          className="flex-1 text-xs bg-transparent outline-none placeholder:text-muted-foreground/40"
+                        />
+                        {epicSearch && (
+                          <button type="button" onClick={() => setEpicSearch('')} className="text-muted-foreground/40 hover:text-foreground">
+                            <X className="w-3 h-3" />
+                          </button>
+                        )}
+                      </div>
+                      <div className="max-h-40 overflow-y-auto py-1">
+                        <button
+                          type="button"
+                          onClick={() => { setEpicId(null); setEpicName(null); setFeatureId(null); setFeatureName(null); setEpicSearchOpen(false); setEpicSearch('') }}
+                          className="w-full flex items-center gap-2 px-3 py-2 text-xs text-left hover:bg-muted/40 text-muted-foreground/40 italic"
+                        >
+                          Sin épica
+                        </button>
                         {(epics?.value ?? []).map((e) => (
-                          <SelectItem key={e.id} value={String(e.id)}>{e.title}</SelectItem>
+                          <button
+                            key={e.id}
+                            type="button"
+                            onClick={() => {
+                              setEpicId(e.id)
+                              setEpicName(e.title)
+                              setFeatureId(null)
+                              setFeatureName(null)
+                              setEpicSearchOpen(false)
+                              setEpicSearch('')
+                            }}
+                            className={`w-full flex items-center gap-2 px-3 py-2 text-xs text-left transition-colors hover:bg-muted/40 ${e.id === epicId ? 'bg-primary/5 text-primary font-bold' : 'text-foreground'}`}
+                          >
+                            <Target className="w-3.5 h-3.5 text-orange-400 flex-shrink-0" />
+                            <span className="truncate">{e.title}</span>
+                            {e.id === epicId && <span className="text-primary text-[10px] flex-shrink-0 ml-auto">✓</span>}
+                          </button>
                         ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                )
-              })()}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
 
               {/* Feature */}
               {(() => {

@@ -5,6 +5,21 @@ Frontend React + TypeScript + Vite · Backend Express proxy · ADO REST API v7.0
 
 ---
 
+## Sesión 2026-05-11 (continuación) — Implementación del Plan de Escalabilidad
+
+| # | Qué se hizo | Archivos |
+|---|---|---|
+| 1 | **Fase 1 — Chunking de batch**: `getWorkItemsBatch` ahora divide IDs en chunks de 200 (límite ADO) y los ejecuta en paralelo con `Promise.all`. Constante `BATCH_CHUNK_SIZE = 200` y array `BATCH_FIELDS` extraídos para evitar duplicación. | `frontend/src/api/client.ts` |
+| 2 | **Fase 2 — useMemo + React.memo CORRECTAMENTE**: `useMemo` en `filteredItems` ANTES de los early returns. Callbacks estabilizados con `useRef` + `useCallback` (latest ref pattern) para que `React.memo` en `WorkItemCard` realmente evite re-renders. `onClick` cambió a `(id: number) => void` en vez de `() => void` para evitar closures por item. Mismo patrón aplicado en `UserCollapseList`. | `SprintBoard.tsx`, `WorkItemCard.tsx`, `UserCollapseList.tsx` |
+| 3 | **Fase 3 — Lazy loading de épicas**: `getEpics(searchQuery?: string)` ahora acepta búsqueda opcional con `CONTAINS` en WIQL. `useEpics` usa `useState` + `useEffect` con debounce de 300ms. En `WorkItemQuickEdit`, el `<Select>` de épicas se reemplazó por un autocomplete con input de búsqueda y dropdown asíncrono (mismo patrón que el selector de tags). `CreateTaskModal` sigue usando `useEpics()` sin búsqueda (carga todas). | `frontend/src/api/client.ts`, `frontend/src/hooks/useWorkItems.ts`, `WorkItemQuickEdit.tsx` |
+
+### Decisiones importantes
+- **Patrón latest ref para callbacks con memo**: `useRef(onWorkItemClick)` + `useCallback((id) => ref.current?.(id), [])` es la forma correcta de pasar callbacks estables a componentes memoizados. La alternativa con `useCallback(fn, [dep])` no funciona porque la dependencia cambia.
+- **Debounce en el hook, no en el componente**: `useEpics` maneja el debounce internamente con `useState` + `useEffect`. El componente solo pasa el valor crudo del input.
+- **Backward compatibility en useEpics**: `useEpics()` sin argumentos sigue cargando todas las épicas. `useEpics("texto")` aplica filtro con debounce.
+
+---
+
 ## Sesión 2026-05-11 — Code Review + Fixes de Seguridad y Robustez
 
 | # | Qué se hizo | Archivos |
@@ -100,6 +115,10 @@ Frontend React + TypeScript + Vite · Backend Express proxy · ADO REST API v7.0
 | Validación lazy de configuración | ✅ Completo (2026-05-11) |
 | Filtro TeamProject en WIQL de Features | ✅ Completo (2026-05-11) |
 | Fix timezone en `toISO()` de QuickEdit | ✅ Completo (2026-05-11) |
+| Chunking de batch (200 IDs, Promise.all) | ✅ Completo (2026-05-11) |
+| React.memo + useCallback en WorkItemCard | ✅ Completo (2026-05-11) |
+| useMemo en filtros de SprintBoard | ✅ Completo (2026-05-11) |
+| Lazy loading de épicas con búsqueda debounced | ✅ Completo (2026-05-11) |
 
 ---
 

@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+import { useRef, useState, memo } from 'react'
 import { Avatar } from './Avatar'
 import { TypeBadge, StateBadge } from './Badge'
 import { TimeConfirmDialog } from './TimeConfirmDialog'
@@ -9,11 +9,11 @@ import { ChevronLeft, ChevronRight, Loader2, Clock, Pencil, GripVertical } from 
 
 interface WorkItemCardProps {
   workItem: WorkItemUI
-  onClick?: () => void
+  onClick?: (id: number) => void
   draggable?: boolean
 }
 
-export function WorkItemCard({ workItem, onClick, draggable }: WorkItemCardProps) {
+const WorkItemCardComponent = ({ workItem, onClick, draggable }: WorkItemCardProps) => {
   const assigneeName = workItem.assignedToName ?? workItem.assignedTo ?? 'Sin asignar'
   const updateMutation = useUpdateWorkItem()
   const { setEditingWorkItemId } = useBoardStore()
@@ -88,7 +88,7 @@ export function WorkItemCard({ workItem, onClick, draggable }: WorkItemCardProps
   return (
     <>
     <div
-      onClick={onClick}
+      onClick={() => onClick?.(workItem.id)}
       draggable={draggable}
       onDragStart={draggable ? (e) => {
         if (!isDragHandleActive.current) {
@@ -246,6 +246,8 @@ export function WorkItemCard({ workItem, onClick, draggable }: WorkItemCardProps
     </>
   )
 }
+
+export const WorkItemCard = memo(WorkItemCardComponent)
 
 /**
  * Convierte fecha ISO a local sin el bug de new Date("YYYY-MM-DD") = UTC midnight.

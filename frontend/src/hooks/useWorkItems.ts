@@ -1,4 +1,5 @@
 // TanStack Query hooks
+import { useState, useEffect } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import * as api from '../api/client'
 import type { WorkItemUI } from '../types'
@@ -36,10 +37,17 @@ export function useTags() {
   })
 }
 
-export function useEpics() {
+export function useEpics(searchQuery?: string) {
+  const [debouncedQuery, setDebouncedQuery] = useState(searchQuery ?? '')
+
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedQuery(searchQuery ?? ''), 300)
+    return () => clearTimeout(timer)
+  }, [searchQuery])
+
   return useQuery({
-    queryKey: ['epics'],
-    queryFn: api.getEpics,
+    queryKey: ['epics', debouncedQuery || null],
+    queryFn: () => api.getEpics(debouncedQuery || undefined),
     staleTime: 5 * 60_000,
   })
 }
