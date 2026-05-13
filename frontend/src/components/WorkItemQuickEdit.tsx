@@ -620,20 +620,20 @@ export function WorkItemQuickEdit({ workItem, isOpen, onClose }: WorkItemQuickEd
               {/* Fechas */}
               <div className="grid grid-cols-2 gap-2">
                 <div className="space-y-1.5">
-                  <label htmlFor="edit-start" className="text-[9px] font-black uppercase tracking-widest text-muted-foreground/40 flex items-center gap-1">
+                  <label className="text-[9px] font-black uppercase tracking-widest text-muted-foreground/40 flex items-center gap-1">
                     <Calendar className="w-2.5 h-2.5" /> Inicio
                   </label>
                   <div className="flex items-center bg-background rounded-xl px-3 py-2 border border-muted-foreground/10">
-                    <input id="edit-start" name="startDate" type="date" value={fechaInicio} onChange={(e) => setFechaInicio(e.target.value)}
+                    <input name="startDate" type="date" aria-label="Fecha de inicio" value={fechaInicio} onChange={(e) => setFechaInicio(e.target.value)}
                       className="w-full text-xs bg-transparent outline-none" />
                   </div>
                 </div>
                 <div className="space-y-1.5">
-                  <label htmlFor="edit-end" className="text-[9px] font-black uppercase tracking-widest text-muted-foreground/40 flex items-center gap-1">
+                  <label className="text-[9px] font-black uppercase tracking-widest text-muted-foreground/40 flex items-center gap-1">
                     <Calendar className="w-2.5 h-2.5" /> Fin
                   </label>
                   <div className="flex items-center bg-background rounded-xl px-3 py-2 border border-muted-foreground/10">
-                    <input id="edit-end" name="endDate" type="date" value={fechaFin} onChange={(e) => setFechaFin(e.target.value)}
+                    <input name="endDate" type="date" aria-label="Fecha de fin" value={fechaFin} onChange={(e) => setFechaFin(e.target.value)}
                       className="w-full text-xs bg-transparent outline-none" />
                   </div>
                 </div>
