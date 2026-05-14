@@ -8,6 +8,14 @@ import {
   Calendar, Tag, User, MessageSquare, ChevronRight, Layout,
   Box, Target, Loader2, X, Clock, Zap, Flag, GitBranch, ExternalLink,
 } from 'lucide-react'
+
+function getInitials(name: string): string {
+  const parts = name.trim().split(/\s+/)
+  if (parts.length >= 2) {
+    return (parts[0][0] + parts[1][0]).toUpperCase()
+  }
+  return name.substring(0, 2).toUpperCase()
+}
 import { useWorkItemHierarchy, useWorkItemComments, useCreateWorkItemComment, useHealth } from '../hooks/useWorkItems'
 import { RichTextEditor } from './RichTextEditor'
 import { TypeBadge } from './Badge'
@@ -301,14 +309,14 @@ export function WorkItemModal({ workItem, isOpen, onClose }: WorkItemModalProps)
                             if (parent) {
                               const fallback = document.createElement('div');
                               fallback.className = 'w-9 h-9 rounded-xl bg-primary/10 flex items-center justify-center text-xs font-black text-primary border border-primary/20';
-                              fallback.textContent = comment.createdBy?.displayName?.charAt(0) ?? '?';
+                              fallback.textContent = getInitials(comment.createdBy?.displayName ?? '??');
                               parent.appendChild(fallback);
                             }
                           }}
                         />
                       ) : (
                         <div className="w-9 h-9 rounded-xl bg-primary/10 flex items-center justify-center text-xs font-black text-primary border border-primary/20">
-                          {comment.createdBy?.displayName?.charAt(0) ?? '?'}
+                          {getInitials(comment.createdBy?.displayName ?? '??')}
                         </div>
                       )}
                       {/* Timeline connector (skip last) */}
