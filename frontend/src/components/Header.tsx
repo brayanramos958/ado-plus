@@ -1,8 +1,16 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
+import { toast } from 'sonner'
+import { Key, KeyRound } from 'lucide-react'
 import { useHealth } from '../hooks/useWorkItems'
 import { useBoardStore } from '../store/boardStore'
 import { useTheme } from '../context/ThemeContext'
+import { useAuth } from '../context/AuthContext'
+import { changePassword, updatePAT } from '../api/client'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
 
 interface HeaderProps {
   onNewTask?: () => void
@@ -12,8 +20,85 @@ export function Header({ onNewTask }: HeaderProps) {
   const { data: health } = useHealth()
   const { viewMode, setViewMode, filterAssigned, sprintPath } = useBoardStore()
   const { theme, toggleTheme } = useTheme()
+  const { user, logout } = useAuth()
   const queryClient = useQueryClient()
   const [refreshing, setRefreshing] = useState(false)
+
+  // ─── Password change dialog ─────────────────────────────────────────────────
+  const [passwordOpen, setPasswordOpen] = useState(false)
+  const [currentPw, setCurrentPw] = useState('')
+  const [newPw, setNewPw] = useState('')
+  const [confirmPw, setConfirmPw] = useState('')
+  const [pwSubmitting, setPwSubmitting] = useState(false)
+
+  const resetPasswordForm = () => {
+    setCurrentPw('')
+    setNewPw('')
+    setConfirmPw('')
+    setPwSubmitting(false)
+  }
+
+  // ─── PAT update dialog ───────────────────────────────────────────────────
+  const [patOpen, setPatOpen] = useState(false)
+  const [patValue, setPatValue] = useState('')
+  const [patSubmitting, setPatSubmitting] = useState(false)
+
+  useEffect(() => {
+    const handler = () => setPatOpen(true)
+    window.addEventListener('auth:pat_expired', handler)
+    return () => window.removeEventListener('auth:pat_expired', handler)
+  }, [])
+
+  const resetPatForm = () => {
+    setPatValue('')
+    setPatSubmitting(false)
+  }
+
+  const handleUpdatePAT = async () => {
+    if (!patValue || patValue.length < 30) {
+      toast.error('La API Key debe tener al menos 30 caracteres')
+      return
+    }
+
+    setPatSubmitting(true)
+    try {
+      const res = await updatePAT(patValue)
+      toast.success(res.message || 'API Key verificada y guardada')
+      setPatOpen(false)
+      resetPatForm()
+    } catch (err) {
+      toast.error((err as Error).message || 'Error al actualizar API Key')
+    } finally {
+      setPatSubmitting(false)
+    }
+  }
+
+  const handleChangePassword = async () => {
+    if (newPw.length < 8) {
+      toast.error('La nueva contraseña debe tener al menos 8 caracteres')
+      return
+    }
+    if (newPw !== confirmPw) {
+      toast.error('Las contraseñas no coinciden')
+      return
+    }
+    if (!currentPw) {
+      toast.error('Ingresá tu contraseña actual')
+      return
+    }
+
+    setPwSubmitting(true)
+    try {
+      const res = await changePassword(currentPw, newPw)
+      toast.success(res.message || 'Contraseña actualizada')
+      setPasswordOpen(false)
+      resetPasswordForm()
+    } catch (err) {
+      toast.error((err as Error).message || 'Error al cambiar la contraseña')
+    } finally {
+      setPwSubmitting(false)
+    }
+  }
 
   const handleRefresh = async () => {
     setRefreshing(true)
@@ -33,6 +118,7 @@ export function Header({ onNewTask }: HeaderProps) {
   }
 
   return (
+    <>
     <header className="bg-card border-b border-border">
       <div className="px-4 py-3 flex items-center justify-between">
         {/* Logo + Title */}
@@ -132,8 +218,198 @@ export function Header({ onNewTask }: HeaderProps) {
           >
             + Nueva Tarea
           </button>
+
+          {/* User email + Password change + Logout */}
+          {user && (
+            <div className="flex items-center gap-2">
+              <span className="hidden md:inline text-sm text-muted-foreground">
+                {user.email}
+              </span>
+              <button
+                onClick={() => setPasswordOpen(true)}
+                className="p-2 rounded-lg hover:bg-accent transition-colors"
+                aria-label="Cambiar contraseña"
+                title="Cambiar contraseña"
+              >
+                <Key className="w-5 h-5 text-muted-foreground" />
+              </button>
+              <button
+                onClick={() => setPatOpen(true)}
+                className="p-2 rounded-lg hover:bg-accent transition-colors"
+                aria-label="Actualizar PAT"
+                title="Actualizar PAT"
+              >
+                <KeyRound className="w-5 h-5 text-muted-foreground" />
+              </button>
+              <button
+                onClick={logout}
+                className="p-2 rounded-lg hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors"
+                aria-label="Cerrar sesión"
+                title="Cerrar sesión"
+              >
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                </svg>
+              </button>
+            </div>
+          )}
         </div>
       </div>
     </header>
+
+    {/* ─── Password change dialog ─────────────────────────────────────────── */}
+    <Dialog open={passwordOpen} onOpenChange={(open) => {
+      if (!open) resetPasswordForm()
+      setPasswordOpen(open)
+    }} disablePointerDismissal>
+      <DialogContent className="max-w-sm sm:max-w-sm">
+        <DialogHeader>
+          <DialogTitle>Cambiar contraseña</DialogTitle>
+          <DialogDescription>
+            Actualizá la contraseña de tu cuenta.
+          </DialogDescription>
+        </DialogHeader>
+
+        <form
+          onSubmit={(e) => { e.preventDefault(); handleChangePassword() }}
+          className="flex flex-col gap-4"
+        >
+          <div className="flex flex-col gap-1.5">
+            <Label htmlFor="pw-current">Contraseña actual</Label>
+            <Input
+              id="pw-current"
+              type="password"
+              value={currentPw}
+              onChange={(e) => setCurrentPw(e.target.value)}
+              placeholder="••••••••"
+              disabled={pwSubmitting}
+            />
+          </div>
+
+          <div className="flex flex-col gap-1.5">
+            <Label htmlFor="pw-new">Nueva contraseña</Label>
+            <Input
+              id="pw-new"
+              type="password"
+              value={newPw}
+              onChange={(e) => setNewPw(e.target.value)}
+              placeholder="Mínimo 8 caracteres"
+              disabled={pwSubmitting}
+            />
+          </div>
+
+          <div className="flex flex-col gap-1.5">
+            <Label htmlFor="pw-confirm">Confirmar nueva contraseña</Label>
+            <Input
+              id="pw-confirm"
+              type="password"
+              value={confirmPw}
+              onChange={(e) => setConfirmPw(e.target.value)}
+              placeholder="Repetí la nueva contraseña"
+              disabled={pwSubmitting}
+            />
+          </div>
+
+          <DialogFooter>
+            <Button
+              type="submit"
+              disabled={pwSubmitting}
+            >
+              {pwSubmitting ? 'Actualizando...' : 'Actualizar'}
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
+
+    {/* ─── PAT update dialog ─────────────────────────────────────────────── */}
+    <Dialog open={patOpen} onOpenChange={(open) => {
+      if (!open) resetPatForm()
+      setPatOpen(open)
+    }} disablePointerDismissal>
+      <DialogContent className="max-w-sm sm:max-w-sm">
+        <DialogHeader>
+          <DialogTitle>Actualizar API Key</DialogTitle>
+          <DialogDescription>
+            Ingresá tu nuevo Personal Access Token de Azure DevOps.
+          </DialogDescription>
+        </DialogHeader>
+
+        <form
+          onSubmit={(e) => { e.preventDefault(); handleUpdatePAT() }}
+          className="flex flex-col gap-4"
+        >
+          <div className="flex flex-col gap-1.5">
+            <Label htmlFor="pat-value">Nueva API Key de Azure DevOps</Label>
+            <Input
+              id="pat-value"
+              type="password"
+              value={patValue}
+              onChange={(e) => setPatValue(e.target.value)}
+              placeholder="Pegá tu API Key aquí"
+              disabled={patSubmitting}
+            />
+          </div>
+
+          {/* PAT scopes info */}
+          <div className="rounded-lg border border-border bg-muted/30 p-3 space-y-2">
+            <p className="text-xs font-semibold text-foreground">Al crear el token, marcá estos tres permisos:</p>
+            <div className="space-y-1.5">
+              <div className="flex items-start gap-2">
+                <svg className="w-3.5 h-3.5 text-green-500 mt-0.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                </svg>
+                <div className="min-w-0">
+                  <span className="text-xs font-medium text-foreground">Work Items → Read, write, &amp; manage</span>
+                  <p className="text-[11px] text-muted-foreground">Tareas, estados, comentarios, tags</p>
+                </div>
+              </div>
+              <div className="flex items-start gap-2">
+                <svg className="w-3.5 h-3.5 text-green-500 mt-0.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                </svg>
+                <div className="min-w-0">
+                  <span className="text-xs font-medium text-foreground">Project and Team → Read, write, &amp; manage</span>
+                  <p className="text-[11px] text-muted-foreground">Sprints, miembros del equipo</p>
+                </div>
+              </div>
+              <div className="flex items-start gap-2">
+                <svg className="w-3.5 h-3.5 text-green-500 mt-0.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                </svg>
+                <div className="min-w-0">
+                  <span className="text-xs font-medium text-foreground">Identity → Read</span>
+                  <p className="text-[11px] text-muted-foreground">Avatares y nombres de los integrantes</p>
+                </div>
+              </div>
+            </div>
+            <p className="text-[11px] text-muted-foreground/70 leading-relaxed">
+              No necesita acceso a Code, Build, Release ni otros scopes.
+            </p>
+          </div>
+
+          <p className="text-xs text-muted-foreground">
+            <a
+              href="https://dev.azure.com/itsinfocom/_usersSettings/tokens"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="underline underline-offset-2 hover:text-foreground"
+            >
+              ¿Dónde obtengo mi API Key?
+            </a>
+          </p>
+
+          <DialogFooter>
+            <Button
+              type="submit"
+              disabled={patSubmitting}
+            >
+              {patSubmitting ? 'Verificando...' : 'Verificar y guardar'}
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
+    </>
   )
 }

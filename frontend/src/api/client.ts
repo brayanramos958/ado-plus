@@ -1,21 +1,66 @@
 const API_BASE = '/api'
+const AUTH_STORAGE_KEY = 'ado-plus-auth'
+
+/** Error lanzado cuando el PAT de Azure DevOps es inválido/expirado.
+ *  Se distingue de un 401 por JWT expirado — no dispara logout. */
+export class PATError extends Error {
+  constructor(message: string) {
+    super(message)
+    this.name = 'PATError'
+  }
+}
+
+function getAuthToken(): string | null {
+  try {
+    const raw = localStorage.getItem(AUTH_STORAGE_KEY)
+    if (!raw) return null
+    const parsed = JSON.parse(raw) as { token?: string }
+    return parsed.token ?? null
+  } catch {
+    return null
+  }
+}
 
 async function request<T>(
   endpoint: string,
   options: RequestInit = {}
 ): Promise<T> {
   const url = `${API_BASE}${endpoint}`
+
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+    ...(options.headers as Record<string, string> | undefined),
+  }
+
+  // Inyectar token JWT si existe
+  const token = getAuthToken()
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`
+  }
+
   const response = await fetch(url, {
     ...options,
-    headers: {
-      'Content-Type': 'application/json',
-      ...options.headers,
-    },
+    headers,
   })
+
+  if (response.status === 401) {
+    const errorBody = await response.json().catch(() => ({ error: 'Sesión expirada' }))
+
+    // Cualquier 401 (PAT inválido o JWT expirado) → logout completo.
+    // El usuario vuelve a LoginPage y se le pide la API Key de nuevo.
+    localStorage.removeItem(AUTH_STORAGE_KEY)
+    window.dispatchEvent(new CustomEvent('auth:logout'))
+
+    if (errorBody.error === 'ADO_PAT_EXPIRED' || errorBody.error === 'NO_PAT') {
+      throw new PATError(errorBody.message || 'Tu PAT de Azure DevOps no es válido. Iniciá sesión de nuevo para actualizarlo.')
+    }
+
+    throw new Error(errorBody.error || 'Sesión expirada — iniciá sesión de nuevo')
+  }
 
   if (!response.ok) {
     const error = await response.json().catch(() => ({}))
-    throw new Error(error.message || `HTTP ${response.status}`)
+    throw new Error(error.error || error.message || `HTTP ${response.status}`)
   }
 
   return response.json()
@@ -389,4 +434,26 @@ export function createWorkItemComment(id: number, text: string) {
     method: 'POST',
     body: JSON.stringify({ text }),
   })
+}
+
+// ============================================
+// Auth
+// ============================================
+
+export function changePassword(currentPassword: string, newPassword: string) {
+  return request<{ ok: boolean; message: string }>('/auth/password', {
+    method: 'PUT',
+    body: JSON.stringify({ currentPassword, newPassword }),
+  })
+}
+
+export function updatePAT(pat: string) {
+  return request<{ ok: boolean; message: string }>('/auth/pat', {
+    method: 'PUT',
+    body: JSON.stringify({ pat }),
+  })
+}
+
+export function getPATStatus() {
+  return request<{ valid: boolean; reason?: string; message?: string }>('/auth/pat-status')
 }
