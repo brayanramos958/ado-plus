@@ -107,27 +107,26 @@ const WorkItemCardComponent = ({ workItem, onClick, draggable }: WorkItemCardPro
         hover:border-primary/50 hover:shadow-sm
         ${isDragging ? 'opacity-40 scale-[0.97]' : ''}`}
     >
-      <div className="p-2.5">
-
+      <div className="p-2">
         {/* Header — zona de drag completa (excepto el botón de editar) */}
         <div
-          className={`flex items-center justify-between mb-2 gap-1 min-w-0 rounded-md -mx-1 px-1 py-0.5
+          className={`flex items-center justify-between mb-1.5 gap-1 min-w-0 rounded-md -mx-1 px-1 py-0.5
             ${draggable ? 'cursor-grab hover:bg-muted/40 transition-colors' : ''}`}
           onMouseDown={draggable ? () => { isDragHandleActive.current = true } : undefined}
           onMouseUp={draggable ? () => { isDragHandleActive.current = false } : undefined}
         >
-          <div className="flex items-center gap-1.5 min-w-0 overflow-hidden">
+          <div className="flex items-center gap-1 min-w-0 overflow-hidden">
             {draggable && (
               <GripVertical className="w-3 h-3 flex-shrink-0 text-muted-foreground/30" />
             )}
             {workItem.priority != null && (
               <span
-                className="w-2 h-2 rounded-full flex-shrink-0"
+                className="w-1.5 h-1.5 rounded-full flex-shrink-0"
                 style={{ backgroundColor: PRIORITY_COLORS[workItem.priority] }}
                 title={`Prioridad ${workItem.priority} — ${PRIORITY_LABELS[workItem.priority]}`}
               />
             )}
-            <span className="text-xs font-mono text-muted-foreground flex-shrink-0">
+            <span className="text-[10px] font-mono text-muted-foreground flex-shrink-0">
               #{workItem.id}
             </span>
           </div>
@@ -137,20 +136,20 @@ const WorkItemCardComponent = ({ workItem, onClick, draggable }: WorkItemCardPro
             <button
               onMouseDown={(e) => e.stopPropagation()}
               onClick={(e) => { e.stopPropagation(); setEditingWorkItemId(workItem.id) }}
-              className="flex items-center justify-center w-6 h-6 rounded-md border border-border/60
+              className="flex items-center justify-center w-5 h-5 rounded-md border border-border/60
                          text-muted-foreground hover:text-primary hover:bg-primary/10
                          hover:border-primary/30 transition-all cursor-pointer"
               title="Edición rápida"
             >
-              <Pencil className="w-3.5 h-3.5" />
+              <Pencil className="w-3 h-3" />
             </button>
 
             {workItem.effortPoints != null && (
               <span
-                className="flex items-center gap-0.5 text-[10px] font-semibold text-primary/80 bg-primary/8 px-1.5 py-0.5 rounded flex-shrink-0"
+                className="flex items-center gap-0.5 text-[9px] font-semibold text-primary/80 bg-primary/8 px-1 py-0.5 rounded flex-shrink-0"
                 title="Puntos de esfuerzo (horas)"
               >
-                <Clock className="w-2.5 h-2.5" />
+                <Clock className="w-2 h-2" />
                 {workItem.effortPoints}h
               </span>
             )}
@@ -159,20 +158,20 @@ const WorkItemCardComponent = ({ workItem, onClick, draggable }: WorkItemCardPro
         </div>
 
         {/* Title */}
-        <h4 className="text-sm font-medium text-foreground line-clamp-2 mb-2 leading-snug">
+        <h4 className="text-xs font-medium text-foreground line-clamp-2 mb-1.5 leading-snug">
           {workItem.title}
         </h4>
 
         {/* Tags — max 2, truncated */}
         {workItem.tags.filter((t) => !t.startsWith('assignee:')).length > 0 && (
-          <div className="flex flex-wrap gap-1 mb-2">
+          <div className="flex flex-wrap gap-1 mb-1.5">
             {workItem.tags
               .filter((t) => !t.startsWith('assignee:'))
               .slice(0, 2)
               .map((tag) => (
                 <span
                   key={tag}
-                  className="px-1.5 py-0.5 text-[10px] bg-secondary text-secondary-foreground rounded truncate max-w-[70px]"
+                  className="px-1 py-0.5 text-[9px] bg-secondary text-secondary-foreground rounded truncate max-w-[60px]"
                   title={tag}
                 >
                   {tag}
@@ -182,33 +181,33 @@ const WorkItemCardComponent = ({ workItem, onClick, draggable }: WorkItemCardPro
         )}
 
         {/* Footer: avatar + nombre | flechas de estado */}
-        <div className="flex items-center justify-between pt-2 border-t border-border gap-1 min-w-0">
-          <div className="flex items-center gap-1.5 min-w-0 flex-shrink overflow-hidden">
-            <Avatar name={assigneeName} />
-            <span className="text-xs text-muted-foreground truncate">{shortName}</span>
+        <div className="flex items-center justify-between pt-1.5 border-t border-border gap-1 min-w-0">
+          <div className="flex items-center gap-1 min-w-0 flex-shrink overflow-hidden">
+            <Avatar name={assigneeName} size="sm" />
+            <span className="text-[10px] text-muted-foreground truncate">{shortName}</span>
           </div>
 
           <div className="flex items-center gap-0.5 flex-shrink-0">
             {updateMutation.isPending ? (
-              <Loader2 className="w-3.5 h-3.5 animate-spin text-muted-foreground mx-1" />
+              <Loader2 className="w-3 h-3 animate-spin text-muted-foreground mx-0.5" />
             ) : (
               <>
                 <button
                   onClick={(e) => prevState && handleStateChange(e, prevState)}
                   disabled={!prevState}
                   title={prevState ?? undefined}
-                  className="w-5 h-5 flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-muted transition-colors disabled:opacity-0 disabled:pointer-events-none"
+                  className="w-4 h-4 flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-muted transition-colors disabled:opacity-0 disabled:pointer-events-none"
                 >
-                  <ChevronLeft className="w-3.5 h-3.5" />
+                  <ChevronLeft className="w-3 h-3" />
                 </button>
                 <StateBadge state={workItem.state} />
                 <button
                   onClick={(e) => nextState && handleStateChange(e, nextState)}
                   disabled={!nextState}
                   title={nextState ?? undefined}
-                  className="w-5 h-5 flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-muted transition-colors disabled:opacity-0 disabled:pointer-events-none"
+                  className="w-4 h-4 flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-muted transition-colors disabled:opacity-0 disabled:pointer-events-none"
                 >
-                  <ChevronRight className="w-3.5 h-3.5" />
+                  <ChevronRight className="w-3 h-3" />
                 </button>
               </>
             )}
@@ -217,7 +216,7 @@ const WorkItemCardComponent = ({ workItem, onClick, draggable }: WorkItemCardPro
 
         {/* Fechas y progreso */}
         {(workItem.fechaInicio || workItem.fechaFin || workItem.completedWork != null) && (
-          <div className="mt-1.5 flex items-center flex-wrap gap-x-2 gap-y-0.5 text-[10px] text-muted-foreground border-t border-border pt-1.5">
+          <div className="mt-1 flex items-center flex-wrap gap-x-1.5 gap-y-0.5 text-[9px] text-muted-foreground border-t border-border pt-1">
             {workItem.fechaInicio && (
               <span className="flex-shrink-0">▶ {fmtDateLocal(workItem.fechaInicio, { day: '2-digit', month: 'short' })}</span>
             )}

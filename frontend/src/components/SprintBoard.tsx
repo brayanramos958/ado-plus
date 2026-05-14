@@ -314,7 +314,7 @@ function SprintBoardTable({ workItems, onWorkItemClick }: SprintBoardTableProps)
   const rowVirtualizer = useVirtualizer({
     count: assigneeList.length,
     getScrollElement: () => parentRef.current,
-    estimateSize: () => 150,
+    estimateSize: () => 120,
     measureElement: (el) => el.getBoundingClientRect().height,
     overscan: 3,
   })
@@ -325,8 +325,8 @@ function SprintBoardTable({ workItems, onWorkItemClick }: SprintBoardTableProps)
       {/* Header de estados - STICKY siempre visible */}
       <div className="flex sticky top-0 z-50 bg-background border-b border-border shadow-sm">
         {/* Columna Usuario - sticky left */}
-        <div className="sticky left-0 z-50 w-48 flex-shrink-0 p-3 bg-background border-r border-border">
-          <span className="text-xs font-semibold text-foreground uppercase">Usuario</span>
+        <div className="sticky left-0 z-50 w-36 flex-shrink-0 p-2 bg-background border-r border-border">
+          <span className="text-[11px] font-semibold text-foreground uppercase">Usuario</span>
         </div>
         {/* Columnas de estados */}
         {TASK_STATES.map((state) => {
@@ -334,22 +334,22 @@ function SprintBoardTable({ workItems, onWorkItemClick }: SprintBoardTableProps)
           return (
             <div
               key={state}
-              className={`flex-1 min-w-[160px] p-3 text-center transition-colors ${isActiveCol ? 'bg-primary/5' : ''}`}
+              className={`flex-1 min-w-[110px] p-2 text-center transition-colors ${isActiveCol ? 'bg-primary/5' : ''}`}
             >
               <span
-                className="text-xs font-semibold uppercase"
+                className="text-[11px] font-semibold uppercase"
                 style={{ color: TASK_STATE_COLORS[state] }}
               >
                 {state}
               </span>
-              <span className="ml-1 text-xs text-muted-foreground">
+              <span className="ml-1 text-[10px] text-muted-foreground">
                 ({getCountByState(workItems, state)})
               </span>
             </div>
           )
         })}
-        <div className="w-20 flex-shrink-0 p-3 text-center">
-          <span className="text-xs font-semibold text-foreground uppercase">Total</span>
+        <div className="w-14 flex-shrink-0 p-2 text-center">
+          <span className="text-[11px] font-semibold text-foreground uppercase">Total</span>
         </div>
       </div>
 
@@ -374,12 +374,16 @@ function SprintBoardTable({ workItems, onWorkItemClick }: SprintBoardTableProps)
               className="flex border-b border-border/50 hover:bg-muted/30"
             >
               {/* Usuario - sticky left */}
-              <div className="sticky left-0 z-20 w-48 flex-shrink-0 p-3 flex items-center gap-2 bg-background border-r border-border/50 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)]">
+              <div className="sticky left-0 z-20 w-36 flex-shrink-0 p-2 flex items-center gap-2 bg-background border-r border-border/50 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)]">
                 <div
-                  className={`w-8 h-8 rounded-full flex items-center justify-center text-slate-700 text-sm font-medium flex-shrink-0
+                  className={`w-7 h-7 rounded-full flex items-center justify-center text-slate-700 text-xs font-medium flex-shrink-0
                     ${assignee.email ? 'bg-slate-200' : 'bg-slate-300'}`}
                 >
                   {assignee.email ? getInitials(assignee.name) : '?'}
+                </div>
+                <div className="min-w-0">
+                  <div className="text-xs font-medium truncate">{assignee.name}</div>
+                  <div className="text-[10px] text-muted-foreground truncate">{assignee.email}</div>
                 </div>
                 <div className="min-w-0">
                   <p className="text-sm font-medium text-foreground truncate">
@@ -411,10 +415,10 @@ function SprintBoardTable({ workItems, onWorkItemClick }: SprintBoardTableProps)
                       }
                     }}
                     onDrop={(e) => handleDrop(e, state as WorkItemState)}
-                    className={`flex-1 min-w-[160px] p-2 border-l border-border/50 min-h-[80px] transition-colors
+                    className={`flex-1 min-w-[110px] p-2 border-l border-border/50 min-h-[80px] transition-colors
                       ${isDragOver ? 'bg-primary/5 ring-2 ring-inset ring-primary/20 rounded-sm' : ''}`}
                   >
-                    <div className="space-y-2">
+                    <div className="space-y-1.5">
                       {items.map((item) => (
                         <WorkItemCard
                           key={item.id}
@@ -435,8 +439,8 @@ function SprintBoardTable({ workItems, onWorkItemClick }: SprintBoardTableProps)
               })}
 
               {/* Total */}
-              <div className="w-20 flex-shrink-0 p-3 flex items-center justify-center bg-muted/30">
-                <span className="text-sm font-semibold text-foreground">
+              <div className="w-14 flex-shrink-0 p-2 flex items-center justify-center bg-muted/30">
+                <span className="text-xs font-semibold text-foreground">
                   {workItems.filter(
                     (w) => (w.assignedTo || null) === (assignee.email || null)
                   ).length}
@@ -448,20 +452,20 @@ function SprintBoardTable({ workItems, onWorkItemClick }: SprintBoardTableProps)
       </div>
 
       {/* Resumen total - sticky bottom */}
-      <div className="flex sticky bottom-0 z-40 bg-muted/95 backdrop-blur-sm border-t-2 border-border">
-        <div className="sticky left-0 z-50 w-48 flex-shrink-0 p-3 bg-muted border-r border-border font-bold">
-          <span className="text-sm text-foreground uppercase">TOTAL</span>
+      <div className="flex sticky bottom-0 z-40 bg-muted/95 backdrop-blur-sm border-t border-border">
+        <div className="sticky left-0 z-50 w-36 flex-shrink-0 p-2 bg-muted border-r border-border font-bold">
+          <span className="text-xs text-foreground uppercase">TOTAL</span>
         </div>
         {TASK_STATES.map((state) => {
           const count = getCountByState(workItems, state)
           return (
-            <div key={state} className="flex-1 min-w-[160px] p-3 text-center">
-              <span className="text-sm font-semibold text-foreground">{count}</span>
+            <div key={state} className="flex-1 min-w-[110px] p-2 text-center">
+              <span className="text-xs font-semibold text-foreground">{count}</span>
             </div>
           )
         })}
-        <div className="w-20 flex-shrink-0 p-3 flex items-center justify-center">
-          <span className="text-sm font-bold text-foreground">{workItems.length}</span>
+        <div className="w-14 flex-shrink-0 p-2 flex items-center justify-center">
+          <span className="text-xs font-bold text-foreground">{workItems.length}</span>
         </div>
       </div>
     </div>
