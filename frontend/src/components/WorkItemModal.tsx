@@ -294,6 +294,17 @@ export function WorkItemModal({ workItem, isOpen, onClose }: WorkItemModalProps)
                           src={comment.createdBy.imageUrl}
                           alt={comment.createdBy.displayName}
                           className="w-9 h-9 rounded-xl border border-border shadow-sm"
+                          onError={(e) => {
+                            const target = e.currentTarget as HTMLImageElement;
+                            target.style.display = 'none';
+                            const parent = target.parentElement;
+                            if (parent) {
+                              const fallback = document.createElement('div');
+                              fallback.className = 'w-9 h-9 rounded-xl bg-primary/10 flex items-center justify-center text-xs font-black text-primary border border-primary/20';
+                              fallback.textContent = comment.createdBy?.displayName?.charAt(0) ?? '?';
+                              parent.appendChild(fallback);
+                            }
+                          }}
                         />
                       ) : (
                         <div className="w-9 h-9 rounded-xl bg-primary/10 flex items-center justify-center text-xs font-black text-primary border border-primary/20">

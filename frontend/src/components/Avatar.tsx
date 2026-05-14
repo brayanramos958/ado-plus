@@ -28,7 +28,16 @@ export function Avatar({ name, image, size = 'md', className = '' }: AvatarProps
       className={`${sizeClasses[size]} rounded-full flex items-center justify-center font-medium text-white ${className} ${bgColor}`}
     >
       {image ? (
-        <img src={image} alt={name} className="w-full h-full rounded-full object-cover" />
+        <img
+          src={image}
+          alt={name}
+          className="w-full h-full rounded-full object-cover"
+          onError={(e) => {
+            const target = e.currentTarget as HTMLImageElement;
+            target.style.display = 'none'
+            target.replaceWith(document.createTextNode(initials))
+          }}
+        />
       ) : (
         initials
       )}
