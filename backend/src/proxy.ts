@@ -1,9 +1,15 @@
-import { getAuthHeader, ADO_BASE, PROJECT_PATH, config } from './config'
+import { getAuthHeader, getPATToken, ADO_BASE, PROJECT_PATH, config } from './config'
+
+function buildBasicAuth(pat: string): string {
+  return `Basic ${Buffer.from(`:${pat}`).toString('base64')}`
+}
 
 interface ProxyOptions {
   method?: string
   body?: unknown
   contentType?: string
+  /** Si se provee, se usa este PAT para autenticación en vez del global. */
+  patToken?: string
 }
 
 const FETCH_TIMEOUT_MS = 30_000 // 30 segundos
@@ -12,10 +18,8 @@ export async function adoFetch(
   path: string,
   options: ProxyOptions = {}
 ): Promise<{ status: number; data: unknown }> {
-  const { method = 'GET', body, contentType = 'application/json' } = options
+  const { method = 'GET', body, contentType = 'application/json', patToken } = options
 
-  // Si el path ya empieza con /, es una ruta absoluta desde el base
-  // Si no, asumimos que es una ruta de proyecto (agregamos PROJECT_PATH)
   const cleanPath = path.startsWith('/') ? path : `${PROJECT_PATH}${path}`
   
   const hasVersion = cleanPath.includes('api-version=')
@@ -23,8 +27,13 @@ export async function adoFetch(
     ? `${ADO_BASE}${cleanPath}`
     : `${ADO_BASE}${cleanPath}${cleanPath.includes('?') ? '&' : '?'}api-version=${config.API_VERSION}`
 
+  const authToken = patToken || getPATToken()
+  if (!authToken) {
+    return { status: 401, data: { error: 'NO_PAT', message: 'No hay PAT configurado. Registrate en ADO Plus con tu API Key de Azure DevOps o agregá PAT_TOKEN en backend/.env.' } }
+  }
+
   const headers: Record<string, string> = {
-    Authorization: getAuthHeader(),
+    Authorization: buildBasicAuth(authToken),
     Accept: 'application/json',
   }
 
@@ -51,16 +60,21 @@ export async function adoFetch(
 
     const contentTypeHeader = response.headers.get('content-type') || ''
     const isJson = contentTypeHeader.includes('application/json')
-    let data: unknown
 
-    if (isJson) {
-      data = await response.json()
-    } else {
+    if (!isJson) {
       const text = await response.text()
-      // Si ADO devuelve HTML (error de proxy, maintenance page), no lo exponemos crudo
-      data = { error: 'ADO_NON_JSON_RESPONSE', message: 'ADO devolvió una respuesta no-JSON', status: response.status, preview: text.slice(0, 200) }
+      // ADO devolvió HTML (login page) — el PAT es inválido o expiró
+      console.warn('[proxy] ADO respondió con HTML (no-JSON). Probable PAT inválido. Preview:', text.slice(0, 150))
+      return {
+        status: 401,
+        data: {
+          error: 'ADO_PAT_EXPIRED',
+          message: 'El token de Azure DevOps (PAT) no es válido o expiró.\nActualizalo desde tu perfil → Actualizar PAT.',
+        },
+      }
     }
 
+    const data = await response.json()
     return { status: response.status, data }
   } catch (err) {
     clearTimeout(timeoutId)
