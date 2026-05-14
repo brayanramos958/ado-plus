@@ -120,11 +120,11 @@ export function Header({ onNewTask }: HeaderProps) {
   return (
     <>
     <header className="bg-card border-b border-border">
-      <div className="px-4 py-3 flex items-center justify-between">
+      <div className="px-4 py-2.5 flex items-center justify-between">
         {/* Logo + Title */}
-        <div className="flex items-center gap-3">
-          <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
-            <span className="text-primary-foreground font-bold text-sm">AD</span>
+        <div className="flex items-center gap-2.5">
+          <div className="w-7 h-7 bg-primary rounded-lg flex items-center justify-center">
+            <span className="text-primary-foreground font-bold text-xs">AD</span>
           </div>
           <div className="hidden sm:block">
             <h1 className="text-lg font-bold text-foreground">ADO Plus</h1>
@@ -147,7 +147,7 @@ export function Header({ onNewTask }: HeaderProps) {
         </div>
 
         {/* Actions */}
-        <div className="flex items-center gap-2 sm:gap-3">
+        <div className="flex items-center gap-1.5 sm:gap-2.5">
           {/* Refresh Button */}
           <button
             onClick={handleRefresh}

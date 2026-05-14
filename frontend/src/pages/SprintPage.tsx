@@ -44,8 +44,8 @@ export function SprintPage() {
       ) : selectedSprint ? (
         <>
           {/* Sprint Info */}
-          <div className="border-b border-blue-100 dark:border-blue-900/40 bg-gradient-to-r from-transparent via-blue-50/80 to-transparent dark:from-transparent dark:via-blue-950/40 dark:to-transparent px-4 py-2.5">
-            <div className="flex items-center justify-center gap-3 sm:gap-5 flex-wrap">
+          <div className="border-b border-blue-100 dark:border-blue-900/40 bg-gradient-to-r from-transparent via-blue-50/80 to-transparent dark:from-transparent dark:via-blue-950/40 dark:to-transparent px-4 py-2">
+            <div className="flex items-center justify-center gap-2.5 sm:gap-4 flex-wrap">
 
               {/* Badge + nombre */}
               <div className="flex items-center gap-2">

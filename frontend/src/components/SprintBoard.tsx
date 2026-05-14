@@ -160,22 +160,22 @@ function UserSelectionGrid({ workItems, onSelectUser }: UserSelectionGridProps) 
   })
 
   return (
-    <div className="p-6">
-      <div className="mb-6">
-        <h2 className="text-xl font-bold text-foreground">Equipo del Sprint</h2>
-        <p className="text-sm text-muted-foreground">Selecciona un integrante para ver su tablero detallado</p>
+    <div className="p-5">
+      <div className="mb-5">
+        <h2 className="text-lg font-bold text-foreground">Equipo del Sprint</h2>
+        <p className="text-xs text-muted-foreground">Selecciona un integrante para ver su tablero detallado</p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
         {userList.map((user) => (
           <button
             key={user.email || 'unassigned'}
             onClick={() => onSelectUser(user.email || 'unassigned')}
-            className="flex flex-col p-5 bg-card border border-border rounded-xl hover:border-primary hover:shadow-md transition-all text-left group"
+            className="flex flex-col p-4 bg-card border border-border rounded-xl hover:border-primary hover:shadow-md transition-all text-left group"
           >
             {/* User Info */}
-            <div className="flex items-center gap-3 mb-4">
-              <div className={`w-12 h-12 rounded-full flex items-center justify-center text-slate-700 text-lg font-bold
+            <div className="flex items-center gap-2.5 mb-3.5">
+              <div className={`w-10 h-10 rounded-full flex items-center justify-center text-slate-700 text-base font-bold
                 ${user.email ? 'bg-slate-200' : 'bg-slate-300'}`}
               >
                 {user.email ? getInitials(user.name) : '?'}
@@ -184,18 +184,18 @@ function UserSelectionGrid({ workItems, onSelectUser }: UserSelectionGridProps) 
                 <h3 className="font-bold text-foreground truncate group-hover:text-primary transition-colors">
                   {user.name}
                 </h3>
-                <p className="text-xs text-muted-foreground truncate">{user.email || 'Sin asignar'}</p>
+                <p className="text-[10px] text-muted-foreground truncate">{user.email || 'Sin asignar'}</p>
               </div>
             </div>
 
             {/* Counts Grid */}
-            <div className="grid grid-cols-3 gap-2 mb-4">
+            <div className="grid grid-cols-3 gap-1.5 mb-3.5">
               {TASK_STATES.slice(0, 6).map((state) => (
-                <div key={state} className="flex flex-col items-center p-2 rounded-lg bg-muted/50 min-w-0">
+                <div key={state} className="flex flex-col items-center p-1.5 rounded-lg bg-muted/50 min-w-0">
                   <span className="text-[9px] font-bold uppercase opacity-60 truncate w-full text-center" style={{ color: TASK_STATE_COLORS[state] }} title={state}>
                     {state}
                   </span>
-                  <span className="text-sm font-bold text-foreground">
+                  <span className="text-xs font-bold text-foreground">
                     {user.counts[state] || 0}
                   </span>
                 </div>
@@ -203,8 +203,8 @@ function UserSelectionGrid({ workItems, onSelectUser }: UserSelectionGridProps) 
             </div>
 
             {/* Total Footer */}
-            <div className="mt-auto pt-3 border-t border-border/50 flex justify-between items-center">
-              <span className="text-xs font-medium text-muted-foreground">Total tareas</span>
+            <div className="mt-auto pt-2.5 border-t border-border/50 flex justify-between items-center">
+              <span className="text-[10px] font-medium text-muted-foreground">Total tareas</span>
               <span className="px-2 py-0.5 bg-primary/10 text-primary text-xs font-bold rounded-full">
                 {user.total}
               </span>
@@ -384,12 +384,6 @@ function SprintBoardTable({ workItems, onWorkItemClick }: SprintBoardTableProps)
                 <div className="min-w-0">
                   <div className="text-xs font-medium truncate">{assignee.name}</div>
                   <div className="text-[10px] text-muted-foreground truncate">{assignee.email}</div>
-                </div>
-                <div className="min-w-0">
-                  <p className="text-sm font-medium text-foreground truncate">
-                    {assignee.name}
-                  </p>
-                  <p className="text-xs text-muted-foreground truncate">{assignee.email || 'Sin asignar'}</p>
                 </div>
               </div>
 
