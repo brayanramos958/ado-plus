@@ -52,9 +52,22 @@ coverage/
 *.lcov
 .nyc_output
 
-# Miscellaneous
+# Backend data (SQLite)
+backend/data/
+backend/scratch_reply.txt
+
+# AI agent configs and skills
+AGENTS.md
+CLAUDE.md
+agent.md
+DESING.md
+plan_a_implemnetar.md
+PLAN.md
+plan.md
 .agents/
+.atl/
 .claude/
 .gemini/
-.atl/
-# skills-lock.json # Keep this if you want to lock skill versions in git
+skills/
+
+images-no-up/
