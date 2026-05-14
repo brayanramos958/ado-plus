@@ -34,17 +34,14 @@ export function SprintPage() {
     }
   }, [currentSprint, sprintPath, setSprintPath])
 
-  // Loading state
-  if (loadingSprint) {
-    return <PageLoader message="Cargando sprint..." />
-  }
-
   return (
     <div className="h-screen bg-background flex flex-col overflow-hidden">
       {/* Header - NO sticky, se mueve con el scroll */}
       <Header onNewTask={() => setCreateModalOpen(true)} />
 
-      {selectedSprint && (
+      {loadingSprint ? (
+        <PageLoader message="Cargando sprint..." />
+      ) : selectedSprint ? (
         <>
           {/* Sprint Info */}
           <div className="border-b border-blue-100 dark:border-blue-900/40 bg-gradient-to-r from-transparent via-blue-50/80 to-transparent dark:from-transparent dark:via-blue-950/40 dark:to-transparent px-4 py-2.5">
@@ -119,7 +116,7 @@ export function SprintPage() {
             onClose={() => setSelectedWorkItemId(null)}
           />
         </>
-      )}
+      ) : null}
 
       <CreateTaskModal
         isOpen={isCreateModalOpen}

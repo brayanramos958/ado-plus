@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import * as api from '../api/client'
+import { PATError } from '../api/client'
 import type { WorkItemUI } from '../types'
 
 // ============================================
@@ -130,7 +131,11 @@ export function useSprintWorkItems(sprintPath: string) {
       return workItems
     },
     enabled: !!sprintPath,
-    refetchInterval: 30_000,
+    refetchInterval: (query) => {
+      // Si el PAT está roto, no sigas cada 30s — no se va a arreglar solo
+      if (query.state.error instanceof PATError) return false
+      return 30_000
+    },
   })
 }
 
