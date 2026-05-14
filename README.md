@@ -9,7 +9,7 @@ Aplicación web interna que reemplaza la UI de Azure DevOps con una interfaz má
 ### Prerrequisitos
 - Node.js 18+
 - pnpm 8+
-- Personal Access Token (PAT) de Azure DevOps con permisos de Work Items y Project & Team
+- Una cuenta en Azure DevOps con acceso al proyecto
 
 ### Instalación
 
@@ -29,25 +29,45 @@ pnpm install
 cp .env.example backend/.env
 ```
 
-4. Edita `backend/.env` con tu token de Azure DevOps:
-```bash
-PAT_TOKEN=tu_token_de_azure_devops
-ADO_ORG=itsinfocom
-ADO_PROJECT=DESARROLLO%20TECNOLOGICO
-ADO_PROJECT_NAME=DESARROLLO TECNOLOGICO
-ADO_TEAM=DESARROLLO%20TECNOLOGICO%20Team
-ADO_TEAM_ID=3d8bbe19-d49c-41c4-9fc1-dc810bdef2d3
-PORT=3001
-```
-
-5. Inicia la aplicación:
+4. Inicia la aplicación:
 ```bash
 pnpm dev
 ```
 
-Esto iniciará:
-- **Backend (proxy)**: http://localhost:3001
-- **Frontend (React)**: http://localhost:5173
+5. Abre el navegador en **http://localhost:5173** y veraz la pantalla de login.
+
+## 🔑 Configuración del PAT (Primer uso)
+
+La primera vez que uses la app, necesitas configurar tu Personal Access Token de Azure DevOps:
+
+### Paso 1: Crear una cuenta
+
+Si no tienes cuenta, haz clic en la pestaña **"Registrarse"** e ingresa:
+- Email
+- Contraseña
+
+![Login](docs/screenshots/login.png)
+
+### Paso 2: Ingresar tu PAT
+
+Después de registrarte, el sistema te pedirá tu **Personal Access Token (PAT)** de Azure DevOps.
+
+Para obtenerlo:
+1. Ve a **https://dev.azure.com/itsinfocom** → Click en tu avatar → **Personal access tokens**
+2. Click en **+ New Token**
+3. Configura:
+   - **Name**: "ADO Plus" o cualquier nombre descriptivo
+   - **Expiration**: 30 días (o el que prefieras)
+   - **Scopes**: **Work Items** (Read & write) y **Project & Team** (Read)
+4. Copy el token generado y pégalo en el campo de la app
+
+![PAT Input](docs/screenshots/pat-input.png)
+
+### Paso 3: Listo
+
+Después de guardar el PAT, verás el board principal con los sprints y tareas del equipo.
+
+![Board Principal](docs/screenshots/board-team.png)
 
 ## ✅ Funcionalidades
 
