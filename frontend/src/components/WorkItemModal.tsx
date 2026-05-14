@@ -8,18 +8,10 @@ import {
   Calendar, Tag, User, MessageSquare, ChevronRight, Layout,
   Box, Target, Loader2, X, Clock, Zap, Flag, GitBranch, ExternalLink,
 } from 'lucide-react'
-
-function getInitials(name: string): string {
-  const parts = name.trim().split(/\s+/)
-  if (parts.length >= 2) {
-    return (parts[0][0] + parts[1][0]).toUpperCase()
-  }
-  return name.substring(0, 2).toUpperCase()
-}
+import { Avatar, getInitials, getAvatarColor } from './Avatar'
 import { useWorkItemHierarchy, useWorkItemComments, useCreateWorkItemComment, useHealth } from '../hooks/useWorkItems'
 import { RichTextEditor } from './RichTextEditor'
 import { TypeBadge } from './Badge'
-import { Avatar } from './Avatar'
 
 interface WorkItemModalProps {
   workItem: WorkItemUI | undefined
@@ -294,31 +286,37 @@ export function WorkItemModal({ workItem, isOpen, onClose }: WorkItemModalProps)
                 className="space-y-4 max-h-[420px] overflow-y-auto pr-2 mb-5 custom-scrollbar"
               >
                 {comments.map((comment, idx) => (
-                  <div key={comment.id} className="flex gap-3 group">
+                  <div key={comment.id} className="flex gap-3 group items-start">
                     {/* Avatar */}
                     <div className="flex-shrink-0 flex flex-col items-center gap-1">
-                      {comment.createdBy?.imageUrl ? (
-                        <img
-                          src={comment.createdBy.imageUrl}
-                          alt={comment.createdBy.displayName}
-                          className="w-9 h-9 rounded-xl border border-border shadow-sm"
-                          onError={(e) => {
-                            const target = e.currentTarget as HTMLImageElement;
-                            target.style.display = 'none';
-                            const parent = target.parentElement;
-                            if (parent) {
-                              const fallback = document.createElement('div');
-                              fallback.className = 'w-9 h-9 rounded-xl bg-primary/10 flex items-center justify-center text-xs font-black text-primary border border-primary/20';
-                              fallback.textContent = getInitials(comment.createdBy?.displayName ?? '??');
-                              parent.appendChild(fallback);
-                            }
-                          }}
-                        />
-                      ) : (
-                        <div className="w-9 h-9 rounded-xl bg-primary/10 flex items-center justify-center text-xs font-black text-primary border border-primary/20">
-                          {getInitials(comment.createdBy?.displayName ?? '??')}
-                        </div>
-                      )}
+                      {(() => {
+                        const name = comment.createdBy?.displayName ?? '??'
+                        const bgColor = getAvatarColor(name)
+                        const initials = getInitials(name)
+                        return comment.createdBy?.imageUrl ? (
+                          <img
+                            src={comment.createdBy.imageUrl}
+                            alt={name}
+                            className="w-10 h-10 rounded-full border border-border shadow-sm"
+                            onError={(e) => {
+                              const target = e.currentTarget as HTMLImageElement;
+                              target.style.display = 'none';
+                              const parent = target.parentElement;
+                              if (parent) {
+                                const fallback = document.createElement('div');
+                                fallback.className = `w-10 h-10 rounded-full ${bgColor} flex items-center justify-center text-sm font-bold text-white border border-white/20`;
+                                fallback.textContent = initials;
+                                parent.appendChild(fallback);
+                              }
+                            }}
+                          />
+                        ) : (
+                          <div className={`w-10 h-10 rounded-full ${bgColor} flex items-center justify-center text-sm font-bold text-white border border-white/20`}>
+                            {initials}
+                          </div>
+                        )
+                      })()}
+                      {/* Timeline connector (skip last) */}
                       {/* Timeline connector (skip last) */}
                       {idx < comments.length - 1 && (
                         <div className="w-px flex-1 min-h-[12px] bg-border" />
