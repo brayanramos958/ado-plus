@@ -6,7 +6,7 @@ Interfaz web interna que reemplaza la UI nativa de Azure DevOps para el equipo `
 
 ## Características
 
-- **Login con Azure DevOps**: Autenticación mediante Personal Access Token (PAT)
+- **Sistema de autenticación multi-usuario**: Registro, login, y gestión de PAT por usuario
 - **Board de equipo**: Vista swimlane con todos los miembros del equipo y sus tareas
 - **Vista detallada por usuario**: Filtra y ve las tareas asignadas a cada miembro
 - **Gestión de sprints**: Selector de sprint con sprints disponibles en ADO
@@ -14,39 +14,68 @@ Interfaz web interna que reemplaza la UI nativa de Azure DevOps para el equipo `
 
 ## Tecnologías
 
+- **Monorepo**: pnpm workspaces
 - **Frontend**: React 19 + Vite + TypeScript
 - **Estado**: Zustand (UI) + TanStack Query (servidor)
 - **UI**: Base UI + Tailwind CSS v4
 - **Backend**: Express.js (proxy hacia ADO API)
+- **Base de datos**: SQLite (autenticación)
+- **Seguridad**: JWT, AES-256-CBC para PAT encriptado
+
+## Requisitos
+
+- Node.js 18+
+- pnpm 8+
+- Windows o Linux
 
 ## Configuración
 
-### Variables de entorno
-
-Backend requiere `backend/.env`:
+### 1. Clonar y instalar dependencias
 
 ```bash
-PAT_TOKEN=<token de dev.azure.com>
-ADO_ORG=itsinfocom
-ADO_PROJECT=DESARROLLO%20TECNOLOGICO
-ADO_PROJECT_NAME=DESARROLLO TECNOLOGICO
-ADO_TEAM=DESARROLLO%20TECNOLOGICO%20Team
-ADO_TEAM_ID=3d8bbe19-d49c-41c4-9fc1-dc810bdef2d3
+git clone https://github.com/brayanramos958/ado-plus.git
+cd ado-plus
+pnpm install
+```
+
+### 2. Configurar variables de entorno
+
+Copia el archivo de ejemplo y completa con tus datos:
+
+```bash
+cp .env.example backend/.env
+```
+
+Edita `backend/.env` con tu token de Azure DevOps:
+
+```bash
+PAT_TOKEN=tu_token_de_azure_devops
+ADO_ORG=tu_organizacion
+ADO_PROJECT=tu_proyecto_url_encoded
+ADO_PROJECT_NAME=tu_proyecto
+ADO_TEAM=tu_team_url_encoded
+ADO_TEAM_ID=tu_team_id
 PORT=3001
 ```
 
-### Ejecución
+### 3. Generar secrets (automático)
+
+Al iniciar por primera vez, el backend genera automáticamente:
+- `JWT_SECRET` - Para firmar tokens JWT
+- `ENCRYPTION_KEY` - Para encriptar PAT en la base de datos
+
+Solo `PAT_TOKEN` es obligatorio en el `.env`.
+
+## Ejecución
 
 ```bash
-# Raíz del proyecto
+# Un solo comando - levanta backend + frontend juntos
 pnpm dev
-
-# Solo backend (:3001)
-pnpm --filter ./backend dev
-
-# Solo frontend (:5173)
-pnpm --filter ./frontend dev
 ```
+
+La aplicación estará disponible en:
+- **Frontend**: http://localhost:5173
+- **Backend API**: http://localhost:3001
 
 ## Screenshots
 
@@ -69,27 +98,37 @@ Browser (:5173 React)
   ↓ fetch /api/*
 Vite proxy transparente
   ↓ redirige a
-Express backend (:3001)  ← ÚNICO lugar con el PAT token
+Express backend (:3001)
   ↓ + Authorization: Basic <PAT>
 Azure DevOps REST API v7.0
 ```
+
+- El PAT nunca llega al browser - el backend lo inyecta en todas las requests
+- Cada usuario tiene su propio PAT encriptado en la base de datos SQLite
+- El PAT global de `.env` sirve como fallback
 
 ## Estructura del proyecto
 
 ```
 ado-plus/
-├── backend/              # Express proxy hacia ADO API
-│   ├── routes/           # Rutas API (workitems, board)
-│   ├── api/              # Cliente ADO
-│   └── proxy.ts          # Proxy handler
-├── frontend/             # React app
-│   ├── src/
-│   │   ├── components/   # Componentes UI
-│   │   ├── stores/       # Zustand stores
-│   │   ├── hooks/        # Custom hooks
-│   │   └── api/          # Queries TanStack
-│   └── public/
-├── docs/                 # Documentación y screenshots
+├── backend/                  # Express proxy hacia ADO API
+│   └── src/
+│       ├── auth/             # Middleware JWT, rate limiter, validators
+│       ├── routes/           # Rutas API (auth, workitems, iterations, members)
+│       ├── config.ts         # Configuración y secrets
+│       ├── db.ts            # SQLite con mejor-sqlite3
+│       ├── index.ts         # Entry point
+│       └── proxy.ts         # Proxy handler hacia ADO
+├── frontend/                 # React app
+│   └── src/
+│       ├── api/             # Cliente API y queries TanStack
+│       ├── components/      # Componentes UI
+│       ├── context/         # AuthContext
+│       ├── hooks/          # Custom hooks (useWorkItems, etc.)
+│       ├── pages/          # Pages (LoginPage, SprintPage)
+│       └── stores/         # Zustand stores
+├── docs/                     # Documentación y screenshots
 │   └── screenshots/
-└── AGENTS.md             # Guía para agentes AI
+├── pnpm-workspace.yaml      # Configuración monorepo
+└── package.json             # Scripts compartidos
 ```
