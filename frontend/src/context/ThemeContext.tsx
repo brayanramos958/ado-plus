@@ -20,45 +20,28 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     return 'light'
   })
 
+  // Sync DOM class + color-scheme meta tag cada vez que cambia el theme
   useEffect(() => {
     const root = document.documentElement
     if (theme === 'dark') {
       root.classList.add('dark')
+      root.classList.remove('light')
+      root.style.colorScheme = 'dark'
     } else {
       root.classList.remove('dark')
+      root.classList.add('light')
+      root.style.colorScheme = 'light'
     }
     localStorage.setItem('theme', theme)
   }, [theme])
 
-  const applyTheme = (newTheme: Theme) => {
-    // Si el navegador no soporta View Transitions, hacemos el cambio normal
-    // @ts-ignore - Propiedad nativa moderna
-    if (!document.startViewTransition) {
-      setThemeState(newTheme)
-      return
-    }
-
-    // Usar la API nativa de View Transitions para un cambio super fluido
-    // mutando el DOM de forma síncrona para que la API capture el "después"
-    // @ts-ignore
-    document.startViewTransition(() => {
-      const root = document.documentElement
-      if (newTheme === 'dark') {
-        root.classList.add('dark')
-      } else {
-        root.classList.remove('dark')
-      }
-      setThemeState(newTheme)
-    })
-  }
-
   const toggleTheme = () => {
     const newTheme = theme === 'light' ? 'dark' : 'light'
-    applyTheme(newTheme)
+    setThemeState(newTheme)
   }
 
   const setTheme = (newTheme: Theme) => {
-    applyTheme(newTheme)
+    setThemeState(newTheme)
   }
 
   return (

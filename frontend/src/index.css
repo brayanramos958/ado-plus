@@ -99,13 +99,6 @@
   }
 }
 
-/* Smooth transitions for theme changes */
-@layer base {
-  body {
-    @apply transition-colors duration-300 ease-in-out;
-  }
-}
-
 /* =====================================================
    Tiptap rich-text editor — placeholder + content styles
    ===================================================== */
