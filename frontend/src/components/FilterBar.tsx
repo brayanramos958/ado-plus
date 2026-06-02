@@ -11,6 +11,8 @@ export function FilterBar() {
     setFilterAssigned,
     searchQuery,
     setSearchQuery,
+    showOrphanView,
+    setShowOrphanView,
   } = useBoardStore()
 
   const { data: iterations } = useIterations()
@@ -79,6 +81,22 @@ export function FilterBar() {
       {/* Search */}
       <div className="flex-1" />
       <div className="flex items-center gap-2">
+        {/* Orphan tasks button — only visible with user filter active */}
+        {filterAssigned && filterAssigned !== 'unassigned' && (
+          <button
+            onClick={() => setShowOrphanView(!showOrphanView)}
+            className={`inline-flex items-center gap-1.5 text-sm font-medium px-2.5 py-1.5 rounded-md transition-colors border focus:outline-none focus:ring-2 focus:ring-ring ${
+              showOrphanView
+                ? 'bg-primary/10 text-primary border-primary/30'
+                : 'bg-background text-muted-foreground border-border hover:text-foreground hover:border-primary/30'
+            }`}
+          >
+            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+            </svg>
+            Tareas huérfanas
+          </button>
+        )}
         <input
           id="filter-search"
           name="search"
@@ -92,7 +110,8 @@ export function FilterBar() {
         {searchQuery && (
           <button
             onClick={() => setSearchQuery('')}
-            className="text-muted-foreground hover:text-foreground"
+            aria-label="Limpiar búsqueda"
+            className="text-muted-foreground hover:text-foreground focus:outline-none focus:ring-2 focus:ring-ring rounded"
           >
             ✕
           </button>

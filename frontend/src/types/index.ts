@@ -115,6 +115,8 @@ export interface WorkItemUI {
   effortField?: 'Microsoft.VSTS.Scheduling.Effort'
   completedWork?: number
   priority?: number
+  // Orphan detection: parent ID for unparented items (used by assign-parent action)
+  parentId?: number
 }
 
 export interface Assignees {

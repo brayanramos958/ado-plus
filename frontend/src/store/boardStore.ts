@@ -28,6 +28,9 @@ interface BoardState {
   editingWorkItemId: number | null
   setEditingWorkItemId: (id: number | null) => void
 
+  showOrphanView: boolean
+  setShowOrphanView: (show: boolean) => void
+
 }
 
 export const useBoardStore = create<BoardState>((set) => ({
@@ -38,7 +41,7 @@ export const useBoardStore = create<BoardState>((set) => ({
   setFilterType: (type) => set({ filterType: type }),
 
   filterAssigned: null,
-  setFilterAssigned: (email) => set({ filterAssigned: email }),
+  setFilterAssigned: (email) => set({ filterAssigned: email, showOrphanView: false }),
 
   searchQuery: '',
   setSearchQuery: (query) => set({ searchQuery: query }),
@@ -57,5 +60,8 @@ export const useBoardStore = create<BoardState>((set) => ({
 
   editingWorkItemId: null,
   setEditingWorkItemId: (id) => set({ editingWorkItemId: id }),
+
+  showOrphanView: false,
+  setShowOrphanView: (show) => set({ showOrphanView: show }),
 
 }))

@@ -85,9 +85,33 @@ router.post('/', async (req, res) => {
 
 router.patch('/:id', async (req, res) => {
   try {
+    const patches: Array<{ op: string; path: string; value?: unknown }> = req.body || []
+
+    // Convert System.Parent field patches into proper ADO relation patches.
+    // ADO stores parent-child as a link relation (Hierarchy-Reverse), not a field.
+    // Only 'add' and 'replace' ops carry a value; 'remove' ops are not supported here
+    // because removing a parent relation requires a separate DELETE call with relation ID.
+    const parentPatches = patches.filter((p) =>
+      p.path === '/fields/System.Parent' && (p.op === 'add' || p.op === 'replace') && p.value != null
+    )
+    const otherPatches = patches.filter((p) => p.path !== '/fields/System.Parent')
+
+    const allPatches = [...otherPatches]
+
+    for (const pp of parentPatches) {
+      allPatches.push({
+        op: 'add',
+        path: '/relations/-',
+        value: {
+          rel: 'System.LinkTypes.Hierarchy-Reverse',
+          url: `${ADO_BASE}/${config.ADO_PROJECT}/_apis/wit/workitems/${pp.value}`,
+        },
+      })
+    }
+
     const { status, data } = await adoFetch(`${PROJECT_PATH}/_apis/wit/workitems/${req.params.id}`, {
       method: 'PATCH',
-      body: req.body,
+      body: allPatches,
       contentType: 'application/json-patch+json',
       patToken: getUserPAT(req),
     })

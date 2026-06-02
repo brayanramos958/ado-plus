@@ -11,9 +11,11 @@ interface WorkItemCardProps {
   workItem: WorkItemUI
   onClick?: (id: number) => void
   draggable?: boolean
+  /** Show ← → state arrows and state badge. Default true. Set false for orphan cards. */
+  showStateControls?: boolean
 }
 
-const WorkItemCardComponent = ({ workItem, onClick, draggable }: WorkItemCardProps) => {
+const WorkItemCardComponent = ({ workItem, onClick, draggable, showStateControls = true }: WorkItemCardProps) => {
   const assigneeName = workItem.assignedToName ?? workItem.assignedTo ?? 'Sin asignar'
   const updateMutation = useUpdateWorkItem()
   const { setEditingWorkItemId } = useBoardStore()
@@ -138,7 +140,8 @@ const WorkItemCardComponent = ({ workItem, onClick, draggable }: WorkItemCardPro
               onClick={(e) => { e.stopPropagation(); setEditingWorkItemId(workItem.id) }}
               className="flex items-center justify-center w-5 h-5 rounded-md border border-border/60
                          text-muted-foreground hover:text-primary hover:bg-primary/10
-                         hover:border-primary/30 transition-all cursor-pointer"
+                         hover:border-primary/30 transition-all cursor-pointer
+                         focus:outline-none focus:ring-2 focus:ring-ring"
               title="Edición rápida"
             >
               <Pencil className="w-3 h-3" />
@@ -180,38 +183,42 @@ const WorkItemCardComponent = ({ workItem, onClick, draggable }: WorkItemCardPro
           </div>
         )}
 
-        {/* Footer: avatar + nombre | flechas de estado */}
+        {/* Footer: avatar + nombre | flechas de estado (opcionales) */}
         <div className="flex items-center justify-between pt-1.5 border-t border-border gap-1 min-w-0">
           <div className="flex items-center gap-1 min-w-0 flex-shrink overflow-hidden">
             <Avatar name={assigneeName} size="sm" />
             <span className="text-[10px] text-muted-foreground truncate">{shortName}</span>
           </div>
 
-          <div className="flex items-center gap-0.5 flex-shrink-0">
-            {updateMutation.isPending ? (
+          {updateMutation.isPending ? (
+            showStateControls && (
               <Loader2 className="w-3 h-3 animate-spin text-muted-foreground mx-0.5" />
-            ) : (
-              <>
+            )
+          ) : (
+            <div className="flex items-center gap-0.5 flex-shrink-0">
+              {showStateControls && (
                 <button
                   onClick={(e) => prevState && handleStateChange(e, prevState)}
                   disabled={!prevState}
                   title={prevState ?? undefined}
-                  className="w-4 h-4 flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-muted transition-colors disabled:opacity-0 disabled:pointer-events-none"
-                >
-                  <ChevronLeft className="w-3 h-3" />
-                </button>
-                <StateBadge state={workItem.state} />
-                <button
-                  onClick={(e) => nextState && handleStateChange(e, nextState)}
-                  disabled={!nextState}
-                  title={nextState ?? undefined}
-                  className="w-4 h-4 flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-muted transition-colors disabled:opacity-0 disabled:pointer-events-none"
+className="w-4 h-4 flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-muted transition-colors disabled:opacity-0 disabled:pointer-events-none focus:outline-none focus:ring-2 focus:ring-ring"
+                 >
+                   <ChevronLeft className="w-3 h-3" />
+                 </button>
+               )}
+               <StateBadge state={workItem.state} />
+               {showStateControls && (
+                 <button
+                   onClick={(e) => nextState && handleStateChange(e, nextState)}
+                   disabled={!nextState}
+                   title={nextState ?? undefined}
+                   className="w-4 h-4 flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-muted transition-colors disabled:opacity-0 disabled:pointer-events-none focus:outline-none focus:ring-2 focus:ring-ring"
                 >
                   <ChevronRight className="w-3 h-3" />
                 </button>
-              </>
-            )}
-          </div>
+              )}
+            </div>
+          )}
         </div>
 
         {/* Fechas y progreso */}
