@@ -192,7 +192,7 @@ export function CreateTaskModal({ isOpen, onClose, defaultSprintPath, defaultAss
   const [state, setState] = useState<WorkItemState>('Por Hacer')
   const [epicId, setEpicId] = useState<number | null>(null)
   const [featureId, setFeatureId] = useState<number | null>(null)
-  const [assignedTo, setAssignedTo] = useState<string | null>(null)
+  const [assignedTo, setAssignedTo] = useState<string | null>(defaultAssignedTo ?? null)
   const [sprintPath, setSprintPath] = useState(defaultSprintPath || '')
   const [effortPoints, setEffortPoints] = useState<string>('')
   const [priority, setPriority] = useState<number>(2)
@@ -232,27 +232,6 @@ export function CreateTaskModal({ isOpen, onClose, defaultSprintPath, defaultAss
     document.addEventListener('mousedown', handler)
     return () => document.removeEventListener('mousedown', handler)
   }, [])
-
-  useEffect(() => {
-    if (isOpen) {
-      setSprintPath(defaultSprintPath || '')
-      setTitle('')
-      setDescription('')
-      setType('Task')
-      setState('Por Hacer')
-      setEpicId(null)
-      setFeatureId(null)
-      setAssignedTo(defaultAssignedTo || null)
-      setEffortPoints('')
-      setPriority(2)
-      setTags([])
-      setTagDropdownOpen(false)
-      setTagSearch('')
-      setFechaInicio('')
-      setFechaFin('')
-      setErrors({})
-    }
-  }, [isOpen, defaultSprintPath, defaultAssignedTo])
 
   useEffect(() => {
     setState(type === 'Task' ? 'Por Hacer' : 'New')

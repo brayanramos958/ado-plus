@@ -47,21 +47,27 @@ interface WorkItemQuickEditProps {
 }
 
 export function WorkItemQuickEdit({ workItem, isOpen, onClose }: WorkItemQuickEditProps) {
-  const [title, setTitle] = useState('')
-  const [state, setState] = useState<string>('')
-  const [assignedTo, setAssignedTo] = useState('')
-  const [sprintPath, setSprintPath] = useState('')
-  const [tags, setTags] = useState<string[]>([])
+  // State initializers use workItem directly — the parent (SprintPage) passes
+  // a `key` that changes when workItem/isOpen change, so this component remounts
+  // and runs the initializers with the new workItem values.
+  const [title, setTitle] = useState(workItem?.title ?? '')
+  const [state, setState] = useState<string>(workItem?.state ?? '')
+  const [assignedTo, setAssignedTo] = useState(workItem?.assignedTo ?? '')
+  const [sprintPath, setSprintPath] = useState(workItem?.iterationPath ?? '')
+  const [tags, setTags] = useState<string[]>(workItem?.tags ?? [])
   const [tagDropdownOpen, setTagDropdownOpen] = useState(false)
   const [tagSearch, setTagSearch] = useState('')
   const [description, setDescription] = useState('')
   const [descriptionTouched, setDescriptionTouched] = useState(false)
-  const [openCount, setOpenCount] = useState(0)
-  const [fechaInicio, setFechaInicio] = useState('')
-  const [fechaFin, setFechaFin] = useState('')
-  const [effortPoints, setEffortPoints] = useState('')
-  const [completedWork, setCompletedWork] = useState('')
-  const [priority, setPriority] = useState<number | null>(null)
+  const [fechaInicio, setFechaInicio] = useState(toDateInput(workItem?.fechaInicio))
+  const [fechaFin, setFechaFin] = useState(toDateInput(workItem?.fechaFin))
+  const [effortPoints, setEffortPoints] = useState(
+    workItem?.effortPoints != null ? String(workItem.effortPoints) : ''
+  )
+  const [completedWork, setCompletedWork] = useState(
+    workItem?.completedWork != null ? String(workItem.completedWork) : ''
+  )
+  const [priority, setPriority] = useState<number | null>(workItem?.priority ?? null)
   const [epicId, setEpicId] = useState<number | null>(null)
   const [epicName, setEpicName] = useState<string | null>(null)
   const [epicSearchOpen, setEpicSearchOpen] = useState(false)
@@ -99,32 +105,16 @@ export function WorkItemQuickEdit({ workItem, isOpen, onClose }: WorkItemQuickEd
   const existingDescription = fullItem?.fields['System.Description'] ?? ''
 
   useEffect(() => {
-    if (isOpen && workItem) {
-      setTitle(workItem.title)
-      setState(workItem.state)
-      setAssignedTo(workItem.assignedTo ?? '')
-      setSprintPath(workItem.iterationPath ?? '')
-      setTags(workItem.tags ?? [])
-      setDescription('')
-      setDescriptionTouched(false)
-      setFechaInicio(toDateInput(workItem.fechaInicio))
-      setFechaFin(toDateInput(workItem.fechaFin))
-      setEffortPoints(workItem.effortPoints != null ? String(workItem.effortPoints) : '')
-      setCompletedWork(workItem.completedWork != null ? String(workItem.completedWork) : '')
-      setPriority(workItem.priority ?? null)
-      setTagDropdownOpen(false)
-      setTagSearch('')
-      setEpicSearchOpen(false)
-      setEpicSearch('')
-      setOpenCount((c) => c + 1)
-      // Reset epic/feature until hierarchy loads
-      setEpicId(null)
-      setFeatureId(null)
-      setOriginalFeatureId(null)
+    if (isOpen && hierarchy) {
+      const fid = hierarchy.feature?.id ?? null
+      const eid = hierarchy.epic?.id ?? null
+      setFeatureId(fid)
+      setFeatureName(hierarchy.feature?.fields['System.Title'] ?? null)
+      setEpicId(eid)
+      setEpicName(hierarchy.epic?.fields['System.Title'] ?? null)
+      setOriginalFeatureId(fid)
     }
-  }, [isOpen, workItem])
-
-  // Initialize epic/feature from hierarchy once it loads
+  }, [isOpen, hierarchy])
   useEffect(() => {
     if (isOpen && hierarchy) {
       const fid = hierarchy.feature?.id ?? null
@@ -293,7 +283,7 @@ export function WorkItemQuickEdit({ workItem, isOpen, onClose }: WorkItemQuickEd
                   <div className="h-32 rounded-2xl border border-muted-foreground/15 bg-muted/10 animate-pulse" />
                 ) : (
                   <RichTextEditor
-                    key={`desc-${workItem.id}-${openCount}`}
+                    key={workItem.id}
                     initialContent={existingDescription}
                     onChange={(html) => { setDescription(html); setDescriptionTouched(true) }}
                     placeholder="Escribe para actualizar la descripción..."
