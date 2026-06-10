@@ -59,8 +59,8 @@ export function WorkItemQuickEdit({ workItem, isOpen, onClose }: WorkItemQuickEd
   const [tagSearch, setTagSearch] = useState('')
   const [description, setDescription] = useState('')
   const [descriptionTouched, setDescriptionTouched] = useState(false)
-  const [fechaInicio, setFechaInicio] = useState(toDateInput(workItem?.fechaInicio))
-  const [fechaFin, setFechaFin] = useState(toDateInput(workItem?.fechaFin))
+  const [fechaInicio, setFechaInicio] = useState(() => toDateInput(workItem?.fechaInicio))
+  const [fechaFin, setFechaFin] = useState(() => toDateInput(workItem?.fechaFin))
   const [effortPoints, setEffortPoints] = useState(
     workItem?.effortPoints != null ? String(workItem.effortPoints) : ''
   )
