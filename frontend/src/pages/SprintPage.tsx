@@ -184,7 +184,7 @@ export function SprintPage() {
       ) : null}
 
       <CreateTaskModal
-        key={isCreateModalOpen ? 'open' : 'closed'}
+        key={`create-modal-${isCreateModalOpen ? 'open' : 'closed'}`}
         isOpen={isCreateModalOpen}
         onClose={() => setCreateModalOpen(false)}
         defaultSprintPath={sprintPath}
@@ -193,7 +193,7 @@ export function SprintPage() {
 
       {/* Quick Edit Modal */}
       <WorkItemQuickEdit
-        key={editingWorkItem ? `${editingWorkItem.id}-${editingWorkItemId != null}` : 'closed'}
+        key={`edit-modal-${editingWorkItem ? `${editingWorkItem.id}-${editingWorkItemId != null}` : 'closed'}`}
         workItem={editingWorkItem}
         isOpen={editingWorkItemId != null}
         onClose={() => setEditingWorkItemId(null)}
