@@ -20,22 +20,23 @@ interface OrphanSectionProps {
 }
 
 export function OrphanSection({ userEmail, fullWidth, onWorkItemClick }: OrphanSectionProps) {
-  if (!userEmail) return null
-
+  // ALL hooks must be called unconditionally, before any early return.
+  // This satisfies the Rules of Hooks — React relies on call order being
+  // identical across renders.
   const [activeTab, setActiveTab] = useState<'unsprint' | 'unparented'>('unsprint')
   const queryClient = useQueryClient()
 
   // Look up display name from members data — WIQL [System.AssignedTo]
   // compares against displayName, NOT email (uniqueName).
   const { data: membersData } = useMembers()
-  const member = membersData?.value?.find(
-    (m) => m.email.toLowerCase() === userEmail.toLowerCase()
-  )
+  const member = userEmail
+    ? membersData?.value?.find((m) => m.email.toLowerCase() === userEmail.toLowerCase())
+    : undefined
   const displayName = member?.displayName ?? null
-  const userName = member?.displayName ?? userEmail.split('@')[0]
+  const userName = member?.displayName ?? (userEmail ? userEmail.split('@')[0] : '')
 
-  // Wait for displayName before firing queries — avoids wasted requests
-  // that return unfiltered results when WIQL can't filter by user yet
+  // Both queries are disabled when userEmail is null (via the hooks' own
+  // `enabled: !!email` guard). They fire once displayName resolves.
   const {
     data: unsprintItems,
     isLoading: unsprintLoading,
@@ -47,9 +48,12 @@ export function OrphanSection({ userEmail, fullWidth, onWorkItemClick }: OrphanS
     isLoading: unparentedLoading,
     error: unparentedError,
   } = useUnparentedWorkItems(userEmail, {
-    enabled: !!displayName, // Wait for displayName to avoid unfiltered WIQL
+    enabled: !!displayName,
     displayName,
   })
+
+  // Early return AFTER all hooks — safe because hooks are already registered.
+  if (!userEmail) return null
 
   const unsprintCount = unsprintItems?.length ?? 0
   const unparentedCount = unparentedItems?.length ?? 0
