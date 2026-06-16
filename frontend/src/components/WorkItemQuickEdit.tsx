@@ -85,7 +85,9 @@ export function WorkItemQuickEdit({ workItem, isOpen, onClose }: WorkItemQuickEd
     const el = titleRef.current
     if (!el) return
     el.style.height = 'auto'
-    el.style.height = `${el.scrollHeight}px`
+    // Cap at 25% viewport — beyond that, the textarea scrolls internally
+    const maxH = window.innerHeight * 0.25
+    el.style.height = `${Math.min(el.scrollHeight, maxH)}px`
   }, [title])
 
   const { data: members } = useMembers()
@@ -265,11 +267,11 @@ export function WorkItemQuickEdit({ workItem, isOpen, onClose }: WorkItemQuickEd
                   id="edit-title"
                   name="title"
                   ref={titleRef}
-                  rows={1}
+                  rows={2}
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
                   placeholder="Título del elemento..."
-                  className="w-full bg-transparent border-b-2 border-muted-foreground/10 py-2 text-xl font-black focus:border-primary outline-none transition-colors placeholder:text-muted-foreground/20 resize-none overflow-hidden leading-snug"
+                  className="w-full bg-transparent border-b-2 border-muted-foreground/10 py-2 text-xl font-black focus:border-primary outline-none transition-colors placeholder:text-muted-foreground/20 resize-none overflow-y-auto leading-snug"
                 />
               </div>
 
